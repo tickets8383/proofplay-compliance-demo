@@ -1848,18 +1848,45 @@
         }
 
         async function verifyLogic() {
+            console.log('=== verifyLogic() called ===');
+            
             const btn = document.getElementById('verify-btn');
-            const rawInput = document.getElementById('logic-input').value.trim();
+            const logicInput = document.getElementById('logic-input');
+            
+            if (!btn) {
+                console.error('verify-btn element not found');
+                return;
+            }
+            if (!logicInput) {
+                console.error('logic-input element not found');
+                return;
+            }
+            
+            const rawInput = logicInput.value.trim();
             const resultDiv = document.getElementById('logic-result');
             const statusEl = document.getElementById('logic-status');
             const timeEl = document.getElementById('logic-time');
             const detailsEl = document.getElementById('logic-details');
             const bodyEl = document.getElementById('logic-body');
 
+            if (!resultDiv || !statusEl || !timeEl || !detailsEl || !bodyEl) {
+                console.error('Missing result elements:', {
+                    resultDiv: !!resultDiv,
+                    statusEl: !!statusEl,
+                    timeEl: !!timeEl,
+                    detailsEl: !!detailsEl,
+                    bodyEl: !!bodyEl
+                });
+                return;
+            }
+
             if (!rawInput) {
                 alert('Please enter a ' + (currentMode === 'formal' ? 'logical expression' : 'business rule') + ' to verify');
                 return;
             }
+            
+            console.log('Input:', rawInput);
+            console.log('Mode:', currentMode);
 
             // Normalize input (for formal mode only)
             let input = rawInput;
@@ -2414,16 +2441,33 @@
         }
 
         async function loadAuditStream() {
+            console.log('=== loadAuditStream() called ===');
+            
             const tbody = document.getElementById('audit-stream-body');
             
             if (!tbody) {
-                console.warn('Audit stream body element not found');
+                console.error('❌ Audit stream body element not found');
+                return;
+            }
+            
+            if (!CONFIG || !CONFIG.GPMSC_API_URL) {
+                console.error('❌ CONFIG or CONFIG.GPMSC_API_URL not defined');
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #ff6b6b; padding: 20px;">
+                            Configuration error: CONFIG.GPMSC_API_URL not defined
+                        </td>
+                    </tr>
+                `;
                 return;
             }
             
             try {
-                console.log('Loading audit stream from:', `${CONFIG.GPMSC_API_URL}/audit/recent?limit=10`);
-                const response = await fetch(`${CONFIG.GPMSC_API_URL}/audit/recent?limit=10`, {
+                const url = `${CONFIG.GPMSC_API_URL}/audit/recent?limit=10`;
+                console.log('Loading audit stream from:', url);
+                console.log('CONFIG object:', CONFIG);
+                
+                const response = await fetch(url, {
                     method: 'GET',
                     mode: 'cors',
                     credentials: 'omit'
@@ -2637,19 +2681,39 @@
         }
         
         // Initialize on page load (after all functions are defined)
-        checkStatus();
-        loadAuditStream();
+        console.log('=== Initializing page ===');
         
-        // Set up real-time validation on input
-        document.addEventListener('DOMContentLoaded', function() {
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('DOMContentLoaded - initializing functions');
+                checkStatus();
+                loadAuditStream();
+                
+                const input = document.getElementById('logic-input');
+                if (input) {
+                    input.addEventListener('input', updateInputValidation);
+                    input.addEventListener('blur', updateInputValidation);
+                    updateInputValidation();
+                } else {
+                    console.warn('logic-input element not found on DOMContentLoaded');
+                }
+            });
+        } else {
+            // DOM already loaded
+            console.log('DOM already loaded - initializing functions immediately');
+            checkStatus();
+            loadAuditStream();
+            
             const input = document.getElementById('logic-input');
             if (input) {
                 input.addEventListener('input', updateInputValidation);
                 input.addEventListener('blur', updateInputValidation);
-                // Initial validation
                 updateInputValidation();
+            } else {
+                console.warn('logic-input element not found');
             }
-        });
+        }
     </script>
 </body>
 </html>
