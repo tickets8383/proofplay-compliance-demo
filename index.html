@@ -232,6 +232,9 @@
         .input-group textarea {
             resize: vertical;
             min-height: 80px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-wrap: break-word;
         }
         
         .input-group input:focus,
@@ -2189,7 +2192,7 @@
                         ${data.formal_translation ? `
                         <div class="verification-row">
                             <span class="verification-label">Translated To:</span>
-                            <span class="verification-value" style="font-family: monospace; font-size: 10px;">${data.formal_translation}</span>
+                            <span class="verification-value" style="font-family: monospace; font-size: 10px; white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word; display: block;">${data.formal_translation}</span>
                         </div>
                         ` : ''}
                         ${data.pattern_type ? `
