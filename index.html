@@ -1803,7 +1803,11 @@
         async function checkStatus() {
             const statusEl = document.getElementById('api-status');
             try {
-                const response = await fetch(`${CONFIG.GPMSC_API_URL}/health`);
+                const response = await fetch(`${CONFIG.GPMSC_API_URL}/health`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'omit' // Don't send credentials for health check
+                });
                 if (response.ok) {
                     statusEl.textContent = 'LIVE';
                     statusEl.style.color = '#00d4aa';
@@ -1812,8 +1816,15 @@
                     statusEl.style.color = '#ff6b6b';
                 }
             } catch (e) {
-                statusEl.textContent = 'DOWN';
-                statusEl.style.color = '#ff6b6b';
+                // Check if it's a CORS error
+                if (e.message && e.message.includes('CORS')) {
+                    statusEl.textContent = 'CORS ERROR';
+                    statusEl.style.color = '#ffc857';
+                    console.error('CORS Error: The backend needs to add this domain to CORS_ORIGINS:', window.location.origin);
+                } else {
+                    statusEl.textContent = 'DOWN';
+                    statusEl.style.color = '#ff6b6b';
+                }
             }
         }
 
@@ -2260,9 +2271,13 @@
             const tbody = document.getElementById('audit-stream-body');
             
             try {
-                const response = await fetch(`${CONFIG.GPMSC_API_URL}/audit/recent?limit=10`);
+                const response = await fetch(`${CONFIG.GPMSC_API_URL}/audit/recent?limit=10`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'omit'
+                });
                 if (!response.ok) {
-                    throw new Error('Failed to load audit stream');
+                    throw new Error(`Failed to load audit stream: ${response.status} ${response.statusText}`);
                 }
                 
                 const data = await response.json();
@@ -2325,10 +2340,22 @@
                 }).join('');
                 
             } catch (e) {
+                let errorMsg = e.message || 'Unknown error';
+                let helpText = '';
+                
+                // Check for CORS error
+                if (errorMsg.includes('CORS') || errorMsg.includes('Access-Control-Allow-Origin') || errorMsg.includes('Failed to fetch')) {
+                    errorMsg = 'CORS Error: Backend not configured for this domain';
+                    helpText = '<br><small style="color: #8b9cb3;">The backend needs to add this domain to CORS_ORIGINS environment variable.</small>';
+                } else if (errorMsg.includes('502') || errorMsg.includes('Bad Gateway')) {
+                    errorMsg = 'Backend service unavailable (502)';
+                    helpText = '<br><small style="color: #8b9cb3;">The backend service may be restarting or down. Please try again in a moment.</small>';
+                }
+                
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="4" style="text-align: center; color: #ff6b6b; padding: 20px;">
-                            Error loading audit stream: ${e.message}
+                            Error loading audit stream: ${errorMsg}${helpText}
                         </td>
                     </tr>
                 `;
