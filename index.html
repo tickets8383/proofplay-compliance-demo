@@ -843,6 +843,10 @@
     </style>
     <!-- Mermaid.js for Logic Visualization -->
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    
+    <!-- jsPDF and html2canvas for Affidavit Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script>
         // Initialize Mermaid with dark theme and strict security
         mermaid.initialize({
@@ -1035,6 +1039,7 @@
                     <div class="result-tabs" id="result-tabs" style="display: none;">
                         <button class="result-tab active" onclick="switchTab('graph')" id="tab-graph">🔀 Logic Graph</button>
                         <button class="result-tab" onclick="switchTab('json')" id="tab-json">📄 JSON Result</button>
+                        <button class="result-tab" onclick="generateAffidavit()" id="tab-affidavit" style="margin-left: auto; background: rgba(0, 212, 170, 0.1); border: 1px solid #00d4aa; color: #00d4aa; font-size: 11px; padding: 8px 14px;">📄 Download Affidavit</button>
                     </div>
                     
                     <!-- Graph Tab Content -->
@@ -1471,6 +1476,9 @@
         
         let graphCounter = 0; // For unique mermaid IDs
         let renderDebounceTimer = null; // For debouncing Mermaid renders
+        
+        // Store current verification data for affidavit generation
+        let currentVerificationData = null;
         
         function switchTab(tabName) {
             // Update tab buttons
@@ -2077,11 +2085,25 @@
                     });
                     data = await response.json();
                     
+                    // Store verification data for affidavit generation
+                    currentVerificationData = {
+                        mode: 'business',
+                        input: input,
+                        data: data,
+                        isLogicallyValid: false, // Will be set below
+                        timestamp: data.timestamp || new Date().toISOString()
+                    };
+                    
                     const elapsed = Date.now() - startTime;
                     timeEl.textContent = `${elapsed}ms`;
 
                     // Set validity for graph rendering
                     isLogicallyValid = data.is_logically_valid && !data.is_paradox;
+                    
+                    // Update stored verification data with validity
+                    if (currentVerificationData) {
+                        currentVerificationData.isLogicallyValid = isLogicallyValid;
+                    }
 
                     // Determine result status
                     if (data.is_paradox) {
