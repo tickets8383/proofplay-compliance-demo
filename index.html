@@ -2932,37 +2932,86 @@
             }
             
             // Calculate available width for text (page width minus margins)
-            // Use a conservative width to ensure text doesn't overflow
+            // Use a very conservative width to ensure text doesn't overflow
             const pageWidth = doc.internal.pageSize.getWidth();
             const margin = 20; // 20pt margin on each side
-            // Reduce width slightly to account for font rendering and ensure no overflow
-            const textWidth = (pageWidth - (margin * 2)) * 0.95; // 95% of available width for safety
+            // Use only 85% of available width to be very safe with special characters
+            const textWidth = (pageWidth - (margin * 2)) * 0.85;
             
             // Ensure font is set before splitting (splitTextToSize uses current font settings)
             doc.setFont('times', 'normal');
             doc.setFontSize(11);
             
-            // splitTextToSize returns an array of strings that fit within the width
-            // It automatically uses the current font settings
-            let lines = doc.splitTextToSize(logicStatement, textWidth);
-            
-            // Verify lines were split correctly
-            if (!Array.isArray(lines) || lines.length === 0) {
-                // Fallback: split manually if splitTextToSize fails
-                const words = logicStatement.split(' ');
+            // Use splitTextToSize with explicit options to handle special characters correctly
+            // The third parameter can be an options object in some jsPDF versions
+            let lines;
+            try {
+                // Try with explicit width calculation
+                lines = doc.splitTextToSize(logicStatement, textWidth);
+                
+                // Verify the split worked and lines fit
+                if (Array.isArray(lines) && lines.length > 0) {
+                    // Double-check each line doesn't exceed width
+                    const verifiedLines = [];
+                    lines.forEach(line => {
+                        const lineWidth = doc.getTextWidth(line);
+                        if (lineWidth > textWidth) {
+                            // This line is too wide, split it further
+                            // Split by spaces first, then by characters if needed
+                            const words = line.split(' ');
+                            let currentLine = '';
+                            words.forEach(word => {
+                                const testLine = currentLine ? currentLine + ' ' + word : word;
+                                const testWidth = doc.getTextWidth(testLine);
+                                if (testWidth <= textWidth) {
+                                    currentLine = testLine;
+                                } else {
+                                    if (currentLine) verifiedLines.push(currentLine);
+                                    // If single word is too long, split by characters
+                                    if (doc.getTextWidth(word) > textWidth) {
+                                        let charLine = '';
+                                        for (let i = 0; i < word.length; i++) {
+                                            const testChar = charLine + word[i];
+                                            if (doc.getTextWidth(testChar) <= textWidth) {
+                                                charLine = testChar;
+                                            } else {
+                                                if (charLine) verifiedLines.push(charLine);
+                                                charLine = word[i];
+                                            }
+                                        }
+                                        if (charLine) currentLine = charLine;
+                                    } else {
+                                        currentLine = word;
+                                    }
+                                }
+                            });
+                            if (currentLine) verifiedLines.push(currentLine);
+                        } else {
+                            verifiedLines.push(line);
+                        }
+                    });
+                    lines = verifiedLines;
+                } else {
+                    throw new Error('splitTextToSize returned invalid result');
+                }
+            } catch (e) {
+                // Fallback: manual splitting that preserves special characters
+                console.warn('splitTextToSize failed, using manual split:', e);
                 lines = [];
                 let currentLine = '';
-                words.forEach(word => {
-                    const testLine = currentLine ? currentLine + ' ' + word : word;
+                // Split by spaces but preserve the spaces
+                const parts = logicStatement.split(/(\s+)/);
+                parts.forEach(part => {
+                    const testLine = currentLine + part;
                     const testWidth = doc.getTextWidth(testLine);
                     if (testWidth <= textWidth) {
                         currentLine = testLine;
                     } else {
-                        if (currentLine) lines.push(currentLine);
-                        currentLine = word;
+                        if (currentLine.trim()) lines.push(currentLine.trim());
+                        currentLine = part;
                     }
                 });
-                if (currentLine) lines.push(currentLine);
+                if (currentLine.trim()) lines.push(currentLine.trim());
             }
             
             // Render each line individually
