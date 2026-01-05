@@ -966,14 +966,31 @@
         console.log('Audit log is stored in GPMSC API:', CONFIG.GPMSC_API_URL);
         console.log('ProofPlay API (NOT used for audit):', CONFIG.PROOFPLAY_API_URL);
         
-        // Ensure audit ID input is empty on load (no default bingo game ID)
-        window.addEventListener('DOMContentLoaded', function() {
-            const auditInput = document.getElementById('game-id');
-            if (auditInput && auditInput.value) {
-                console.warn('Clearing pre-filled value from audit input:', auditInput.value);
-                auditInput.value = '';
+        // CRITICAL: Ensure audit ID input is ALWAYS empty on load (no default bingo game ID)
+        // This runs immediately and on DOMContentLoaded to catch any cached values
+        (function() {
+            function clearAuditInput() {
+                const auditInput = document.getElementById('game-id');
+                if (auditInput) {
+                    const oldValue = auditInput.value;
+                    if (oldValue && (oldValue.length > 0)) {
+                        console.warn('⚠️ CLEARING pre-filled value from audit input:', oldValue);
+                        auditInput.value = '';
+                        auditInput.setAttribute('value', ''); // Force HTML attribute too
+                    }
+                }
             }
-        });
+            // Run immediately
+            clearAuditInput();
+            // Run on DOM ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', clearAuditInput);
+            } else {
+                clearAuditInput();
+            }
+            // Run after a short delay to catch any late-setting code
+            setTimeout(clearAuditInput, 100);
+        })();
         
         let currentMode = 'formal';
         
