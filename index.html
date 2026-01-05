@@ -948,8 +948,9 @@
     </div>
 
     <script>
+        // VERSION: 2024-12-19-v2 - Fixed audit trail to use GPMSC API only
         // Configuration - override via query param: ?api=https://... or ?gpmsc=https://...&proofplay=https://...
-        // IMPORTANT: Audit log database is on GPMSC API (gpmsc-api.onrender.com), NOT ProofPlay
+        // CRITICAL: Audit log database is on GPMSC API (gpmsc-api.onrender.com), NOT ProofPlay
         const CONFIG = {
             GPMSC_API_URL: new URLSearchParams(window.location.search).get('gpmsc') 
                 || new URLSearchParams(window.location.search).get('api')
@@ -959,8 +960,19 @@
         };
         
         // Log configuration on load for debugging
+        console.log('=== GPMSC AUDIT TRAIL DEMO v2 ===');
         console.log('API Configuration:', CONFIG);
         console.log('Audit log is stored in GPMSC API:', CONFIG.GPMSC_API_URL);
+        console.log('ProofPlay API (NOT used for audit):', CONFIG.PROOFPLAY_API_URL);
+        
+        // Ensure audit ID input is empty on load (no default bingo game ID)
+        window.addEventListener('DOMContentLoaded', function() {
+            const auditInput = document.getElementById('game-id');
+            if (auditInput && auditInput.value) {
+                console.warn('Clearing pre-filled value from audit input:', auditInput.value);
+                auditInput.value = '';
+            }
+        });
         
         let currentMode = 'formal';
         
@@ -1289,9 +1301,9 @@
             btn.textContent = 'Verify Rule Consistency';
         }
 
-        // VERSION: 2024-12-19 - Fixed to use GPMSC API for audit verification
+        // VERSION: 2024-12-19-v2 - Fixed to use GPMSC API for audit verification
         async function verifyGame() {
-            console.log('verifyGame() called - VERSION: 2024-12-19');
+            console.log('=== verifyGame() called - VERSION: 2024-12-19-v2 ===');
             const btn = document.getElementById('game-btn');
             const auditId = document.getElementById('game-id').value.trim();
             const resultDiv = document.getElementById('game-result');
@@ -1319,17 +1331,24 @@
                 // CRITICAL: Audit log is stored in GPMSC API database, NOT ProofPlay
                 // Use GPMSC audit integrity endpoint (not ProofPlay games endpoint)
                 const baseUrl = CONFIG.GPMSC_API_URL;
-                console.log('CONFIG.GPMSC_API_URL:', baseUrl);
-                console.log('CONFIG.PROOFPLAY_API_URL:', CONFIG.PROOFPLAY_API_URL);
+                console.log('=== AUDIT VERIFICATION ===');
+                console.log('Using GPMSC API URL:', baseUrl);
+                console.log('Audit ID to verify:', auditId);
+                
+                // HARD STOP if trying to use ProofPlay
+                if (baseUrl.includes('proofplay') || baseUrl.toLowerCase().includes('proofplay')) {
+                    console.error('❌ FATAL ERROR: CONFIG is pointing to ProofPlay!');
+                    console.error('CONFIG.GPMSC_API_URL:', baseUrl);
+                    throw new Error('CRITICAL ERROR: Configuration is pointing to ProofPlay API. Audit log is in GPMSC API. Please refresh the page with ?gpmsc=https://gpmsc-api.onrender.com');
+                }
                 
                 const url = `${baseUrl}/audit/${auditId}/integrity`;
-                console.log('Verifying audit integrity at:', url); // Debug log
-                console.log('Full URL being called:', url);
+                console.log('✅ Calling GPMSC audit endpoint:', url);
                 
-                // Safety check: ensure we're not accidentally calling ProofPlay
-                if (url.includes('proofplay') || baseUrl.includes('proofplay')) {
-                    console.error('ERROR: Attempted to use ProofPlay URL!', url);
-                    throw new Error('ERROR: Attempted to call ProofPlay API. Audit log is in GPMSC API. Please refresh the page.');
+                // Double-check URL doesn't contain proofplay
+                if (url.includes('proofplay')) {
+                    console.error('❌ FATAL ERROR: URL contains proofplay!', url);
+                    throw new Error('CRITICAL ERROR: Generated URL points to ProofPlay. This should never happen. Please report this bug.');
                 }
                 
                 console.log('Making fetch request to:', url);
