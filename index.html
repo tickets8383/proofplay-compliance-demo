@@ -2932,33 +2932,43 @@
             }
             
             // Calculate available width for text (page width minus margins)
+            // Use a conservative width to ensure text doesn't overflow
             const pageWidth = doc.internal.pageSize.getWidth();
             const margin = 20; // 20pt margin on each side
-            const textWidth = pageWidth - (margin * 2); // Full width minus margins
+            // Reduce width slightly to account for font rendering and ensure no overflow
+            const textWidth = (pageWidth - (margin * 2)) * 0.95; // 95% of available width for safety
             
             // Ensure font is set before splitting (splitTextToSize uses current font settings)
             doc.setFont('times', 'normal');
             doc.setFontSize(11);
             
             // splitTextToSize returns an array of strings that fit within the width
-            // Use the current font size to calculate proper wrapping
-            const splitText = doc.splitTextToSize(logicStatement, textWidth, {
-                fontSize: 11,
-                fontName: 'times',
-                fontStyle: 'normal'
-            });
+            // It automatically uses the current font settings
+            const lines = doc.splitTextToSize(logicStatement, textWidth);
             
-            // If splitTextToSize doesn't work with options, try without
-            const lines = Array.isArray(splitText) ? splitText : doc.splitTextToSize(logicStatement, textWidth);
+            // Verify lines were split correctly
+            if (!Array.isArray(lines) || lines.length === 0) {
+                // Fallback: split manually if splitTextToSize fails
+                const words = logicStatement.split(' ');
+                const lines = [];
+                let currentLine = '';
+                words.forEach(word => {
+                    const testLine = currentLine ? currentLine + ' ' + word : word;
+                    const testWidth = doc.getTextWidth(testLine);
+                    if (testWidth <= textWidth) {
+                        currentLine = testLine;
+                    } else {
+                        if (currentLine) lines.push(currentLine);
+                        currentLine = word;
+                    }
+                });
+                if (currentLine) lines.push(currentLine);
+            }
             
-            // Render each line individually to ensure proper word wrapping
+            // Render each line individually
             const lineHeight = 6; // Line height in points
             lines.forEach((line, index) => {
-                // Ensure text doesn't exceed the margin boundaries
-                doc.text(line.trim(), margin, yPos + (index * lineHeight), {
-                    maxWidth: textWidth,
-                    align: 'left'
-                });
+                doc.text(line, margin, yPos + (index * lineHeight));
             });
             yPos += lines.length * lineHeight + 5;
             
