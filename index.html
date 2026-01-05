@@ -671,9 +671,13 @@
         .audit-status-valid {
             color: #00d4aa;
         }
-
+        
         .audit-status-invalid {
             color: #ff6b6b;
+        }
+        
+        .audit-status-warning {
+            color: #ffc857;
         }
 
         /* Logic Visualization Tab System */
@@ -2277,12 +2281,36 @@
                 
                 tbody.innerHTML = records.map(record => {
                     const timestamp = new Date(record.timestamp).toLocaleString();
-                    const statusClass = record.valid === true ? 'audit-status-valid' : 
-                                       record.valid === false ? 'audit-status-invalid' : '';
-                    const statusText = record.valid === true ? 'Valid' : 
-                                      record.valid === false ? 'Invalid' : 
-                                      record.status || '—';
-                    const shortId = record.id.substring(0, 8) + '...';
+                    
+                    // Determine status text and class
+                    let statusText = '—';
+                    let statusClass = '';
+                    
+                    if (record.valid === true) {
+                        statusText = 'Valid';
+                        statusClass = 'audit-status-valid';
+                    } else if (record.valid === false) {
+                        statusText = 'Invalid';
+                        statusClass = 'audit-status-invalid';
+                    } else if (record.status) {
+                        // Use status from backend (sat, unsat, paradox, contradiction, etc.)
+                        const statusLower = record.status.toLowerCase();
+                        if (statusLower === 'sat' || statusLower === 'valid') {
+                            statusText = 'Valid';
+                            statusClass = 'audit-status-valid';
+                        } else if (statusLower === 'unsat' || statusLower === 'invalid' || statusLower === 'contradiction') {
+                            statusText = 'Invalid';
+                            statusClass = 'audit-status-invalid';
+                        } else if (statusLower === 'paradox') {
+                            statusText = 'Paradox';
+                            statusClass = 'audit-status-warning';
+                        } else {
+                            statusText = record.status.charAt(0).toUpperCase() + record.status.slice(1);
+                            statusClass = '';
+                        }
+                    }
+                    
+                    const shortId = record.id ? record.id.substring(0, 8) + '...' : record.audit_id ? record.audit_id.substring(0, 8) + '...' : 'N/A';
                     
                     return `
                         <tr>
