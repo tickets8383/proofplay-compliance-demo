@@ -1973,6 +1973,14 @@
                                        smtResult === false ? 'Unsatisfiable (contradiction)' : 
                                        'N/A';
 
+                    // Format timestamp if available
+                    const timestamp = data.timestamp || data.proof?.timestamp || new Date().toISOString();
+                    const timestampDisplay = new Date(timestamp).toLocaleString();
+                    
+                    // Get hash
+                    const hash = data.hash || data.proof?.hash || 'N/A';
+                    const hashDisplay = hash !== 'N/A' ? hash.substring(0, 16) + '...' : 'N/A';
+                    
                     detailsEl.innerHTML = `
                         <div class="verification-row">
                             <span class="verification-label">Verification Result:</span>
@@ -1986,6 +1994,12 @@
                             <span class="verification-label">SMT Solver (Z3):</span>
                             <span class="verification-value">${smtDisplay}</span>
                         </div>
+                        ${data.solver_time_ms !== undefined ? `
+                        <div class="verification-row">
+                            <span class="verification-label">Solver Time:</span>
+                            <span class="verification-value">${data.solver_time_ms.toFixed(2)}ms</span>
+                        </div>
+                        ` : ''}
                         <div class="verification-row">
                             <span class="verification-label">Deployment Risk:</span>
                             <span class="verification-value ${riskClass}">${riskLevel}</span>
@@ -1994,6 +2008,26 @@
                         <div class="verification-row">
                             <span class="verification-label">Coherence Score:</span>
                             <span class="verification-value">${(data.coherence_score * 100).toFixed(1)}%</span>
+                        </div>
+                        ` : ''}
+                        <div class="verification-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #2d4a6f;">
+                            <span class="verification-label">Timestamp:</span>
+                            <span class="verification-value" style="font-size: 11px;">${timestampDisplay}</span>
+                        </div>
+                        <div class="verification-row">
+                            <span class="verification-label">Hash:</span>
+                            <span class="verification-value" style="font-size: 10px; font-family: monospace; word-break: break-all;">${hashDisplay}</span>
+                        </div>
+                        ${data.audit_id ? `
+                        <div class="verification-row">
+                            <span class="verification-label">Audit ID:</span>
+                            <span class="verification-value" style="font-size: 10px; font-family: monospace;">${data.audit_id}</span>
+                        </div>
+                        ` : ''}
+                        ${data.proof?.anchor_id ? `
+                        <div class="verification-row">
+                            <span class="verification-label">Anchor ID:</span>
+                            <span class="verification-value" style="font-size: 10px; font-family: monospace;">${data.proof.anchor_id}</span>
                         </div>
                         ` : ''}
                     `;
@@ -2041,6 +2075,14 @@
                         riskClass = '';
                     }
 
+                    // Format timestamp if available
+                    const timestamp = data.timestamp || data.proof?.timestamp || new Date().toISOString();
+                    const timestampDisplay = new Date(timestamp).toLocaleString();
+                    
+                    // Get hash
+                    const hash = data.hash || data.proof?.hash || 'N/A';
+                    const hashDisplay = hash !== 'N/A' ? hash.substring(0, 16) + '...' : 'N/A';
+                    
                     detailsEl.innerHTML = `
                         <div class="verification-row">
                             <span class="verification-label">Logical Consistency:</span>
@@ -2054,6 +2096,12 @@
                             <span class="verification-label">Translation Confidence:</span>
                             <span class="verification-value ${confidence < 0.7 ? 'warning' : ''}">${(confidence * 100).toFixed(0)}%</span>
                         </div>
+                        ${data.processing_time_ms !== undefined ? `
+                        <div class="verification-row">
+                            <span class="verification-label">Processing Time:</span>
+                            <span class="verification-value">${data.processing_time_ms.toFixed(2)}ms</span>
+                        </div>
+                        ` : ''}
                         ${data.normalized_statement && data.normalized_statement !== input ? `
                         <div class="verification-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #2d4a6f;">
                             <span class="verification-label" style="color: #ffc857;">📝 Normalized:</span>
@@ -2086,6 +2134,26 @@
                             <span class="verification-label">Deployment Risk:</span>
                             <span class="verification-value ${riskClass}">${riskLevel}</span>
                         </div>
+                        <div class="verification-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #2d4a6f;">
+                            <span class="verification-label">Timestamp:</span>
+                            <span class="verification-value" style="font-size: 11px;">${timestampDisplay}</span>
+                        </div>
+                        <div class="verification-row">
+                            <span class="verification-label">Hash:</span>
+                            <span class="verification-value" style="font-size: 10px; font-family: monospace; word-break: break-all;">${hashDisplay}</span>
+                        </div>
+                        ${data.audit_id ? `
+                        <div class="verification-row">
+                            <span class="verification-label">Audit ID:</span>
+                            <span class="verification-value" style="font-size: 10px; font-family: monospace;">${data.audit_id}</span>
+                        </div>
+                        ` : ''}
+                        ${data.anchor_id ? `
+                        <div class="verification-row">
+                            <span class="verification-label">Anchor ID:</span>
+                            <span class="verification-value" style="font-size: 10px; font-family: monospace;">${data.anchor_id}</span>
+                        </div>
+                        ` : ''}
                         <div class="verification-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #2d4a6f;">
                             <span class="verification-label" style="color: #ffc857;">⚠️ Note:</span>
                             <span class="verification-value" style="color: #8b9cb3; font-size: 10px;">Business mode uses deterministic preprocessing + NLP translation. All transforms are logged for audit compliance.</span>
@@ -2348,21 +2416,36 @@
         async function loadAuditStream() {
             const tbody = document.getElementById('audit-stream-body');
             
+            if (!tbody) {
+                console.warn('Audit stream body element not found');
+                return;
+            }
+            
             try {
+                console.log('Loading audit stream from:', `${CONFIG.GPMSC_API_URL}/audit/recent?limit=10`);
                 const response = await fetch(`${CONFIG.GPMSC_API_URL}/audit/recent?limit=10`, {
                     method: 'GET',
                     mode: 'cors',
                     credentials: 'omit'
                 });
+                
+                console.log('Audit stream response status:', response.status);
+                
                 if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Audit stream error response:', errorText);
                     throw new Error(`Failed to load audit stream: ${response.status} ${response.statusText}`);
                 }
                 
                 const data = await response.json();
+                console.log('Audit stream data received:', data);
+                
                 const records = data.records || [];
                 
                 console.log('Audit stream records received:', records.length);
-                console.log('Sample record:', records[0]);
+                if (records.length > 0) {
+                    console.log('Sample record:', records[0]);
+                }
                 
                 if (records.length === 0) {
                     tbody.innerHTML = `
@@ -2408,6 +2491,7 @@
                     }
                     
                     // Get the ID - try multiple fields (backend returns both id and audit_id)
+                    // IMPORTANT: Use the FULL audit_id, not a shortened version
                     const recordId = record.id || record.audit_id || 'N/A';
                     const shortId = recordId !== 'N/A' ? recordId.substring(0, 8) + '...' : 'N/A';
                     
@@ -2422,8 +2506,9 @@
                         endpointDisplay = endpointDisplay.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
                     }
                     
-                    // Escape the recordId for use in HTML attribute to prevent XSS and ensure proper passing
-                    const escapedRecordId = recordId.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    // Escape the FULL recordId for use in HTML attribute to prevent XSS and ensure proper passing
+                    // CRITICAL: Pass the FULL ID, not the shortened version
+                    const escapedRecordId = recordId !== 'N/A' ? recordId.replace(/'/g, "\\'").replace(/"/g, '&quot;') : 'N/A';
                     
                     return `
                         <tr>
@@ -2431,7 +2516,7 @@
                             <td>${endpointDisplay}</td>
                             <td class="${statusClass}">${statusText}</td>
                             <td>
-                                <span class="audit-id-link" onclick="selectAuditId('${escapedRecordId}')" data-audit-id="${escapedRecordId}">${shortId}</span>
+                                <span class="audit-id-link" onclick="selectAuditId('${escapedRecordId}')" data-audit-id="${escapedRecordId}" title="Click to verify: ${escapedRecordId}">${shortId}</span>
                             </td>
                         </tr>
                     `;
@@ -2461,12 +2546,35 @@
         }
 
         function selectAuditId(auditId) {
-            console.log('selectAuditId called with:', auditId);
+            console.log('=== selectAuditId called ===');
+            console.log('Received auditId:', auditId);
+            console.log('Type:', typeof auditId);
+            console.log('Length:', auditId ? auditId.length : 0);
             
-            // Populate the input field
+            if (!auditId || auditId === 'N/A') {
+                console.error('Invalid audit ID:', auditId);
+                alert('Invalid audit ID. Please try clicking a different record.');
+                return;
+            }
+            
+            // Populate the input field with the FULL audit ID
             const inputField = document.getElementById('game-id');
+            if (!inputField) {
+                console.error('Input field #game-id not found');
+                return;
+            }
+            
+            // Set the FULL ID (not shortened)
             inputField.value = auditId;
             console.log('Set input field value to:', inputField.value);
+            console.log('Input field value length:', inputField.value.length);
+            
+            // Verify the value was set correctly
+            if (inputField.value !== auditId) {
+                console.error('Value mismatch! Expected:', auditId, 'Got:', inputField.value);
+                // Force set it again
+                inputField.value = auditId;
+            }
             
             // Highlight it
             inputField.classList.add('audit-highlight');
@@ -2476,9 +2584,11 @@
             
             // Automatically verify (with a small delay to ensure value is set)
             setTimeout(() => {
-                console.log('Calling verifyAuditIntegrity with value:', document.getElementById('game-id').value);
+                const currentValue = document.getElementById('game-id').value;
+                console.log('About to call verifyAuditIntegrity with value:', currentValue);
+                console.log('Value matches expected:', currentValue === auditId);
                 verifyAuditIntegrity();
-            }, 100);
+            }, 150); // Slightly longer delay to ensure DOM is updated
         }
 
         // ============================================================
