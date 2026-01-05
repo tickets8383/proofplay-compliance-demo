@@ -1303,7 +1303,10 @@
             const startTime = Date.now();
 
             try {
-                const response = await fetch(`${CONFIG.GPMSC_API_URL}/audit/${auditId}/integrity`);
+                // Use GPMSC audit integrity endpoint (not ProofPlay games endpoint)
+                const url = `${CONFIG.GPMSC_API_URL}/audit/${auditId}/integrity`;
+                console.log('Verifying audit integrity at:', url); // Debug log
+                const response = await fetch(url);
                 const elapsed = Date.now() - startTime;
                 
                 if (!response.ok) {
