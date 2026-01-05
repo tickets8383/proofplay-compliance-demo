@@ -1501,11 +1501,26 @@
             /**
              * Parses a formal logic string and generates Mermaid flowchart syntax.
              * Handles: ∧ (AND), ∨ (OR), → (IMPLIES), ↔ (IFF), ¬ (NOT)
+             * Also handles: AND, OR, NOT, IMPLIES, IFF (text versions from backend)
              */
             
             if (!logicString || logicString.trim().length === 0) {
                 return null;
             }
+            
+            // CRITICAL: Normalize text operators to formal symbols before parsing
+            // This ensures "(A) AND (B)" from backend formal_translation is parsed correctly
+            // Use word boundaries to avoid replacing inside variable names
+            let normalized = logicString;
+            normalized = normalized.replace(/\bAND\b/gi, '∧');
+            normalized = normalized.replace(/\bOR\b/gi, '∨');
+            normalized = normalized.replace(/\bNOT\b/gi, '¬');
+            normalized = normalized.replace(/\bIMPLIES\b/gi, '→');
+            normalized = normalized.replace(/\bIFF\b/gi, '↔');
+            normalized = normalized.replace(/\bIF\s+THEN\b/gi, '→');
+            
+            // Use normalized string for parsing
+            logicString = normalized;
             
             const nodes = [];
             const edges = [];
