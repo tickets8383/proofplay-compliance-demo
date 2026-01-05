@@ -814,9 +814,10 @@
     <!-- Mermaid.js for Logic Visualization -->
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
     <script>
-        // Initialize Mermaid with dark theme
+        // Initialize Mermaid with dark theme and strict security
         mermaid.initialize({
             startOnLoad: false,
+            securityLevel: 'strict',
             theme: 'dark',
             themeVariables: {
                 primaryColor: '#152238',
@@ -938,7 +939,54 @@
                 
                 <div class="input-group">
                     <label id="input-label">Formal Logic Expression</label>
+                    
+                    <!-- Operator Palette -->
+                    <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;">
+                        <button type="button" onclick="insertAtCursor(document.getElementById('logic-input'), '∧')" 
+                                style="padding: 6px 12px; background: #1e3a5f; border: 1px solid #2d4a6f; border-radius: 4px; color: #f0f4f8; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s;" 
+                                onmouseover="this.style.background='#2d4a6f'" 
+                                onmouseout="this.style.background='#1e3a5f'"
+                                title="AND">∧</button>
+                        <button type="button" onclick="insertAtCursor(document.getElementById('logic-input'), '∨')" 
+                                style="padding: 6px 12px; background: #1e3a5f; border: 1px solid #2d4a6f; border-radius: 4px; color: #f0f4f8; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s;" 
+                                onmouseover="this.style.background='#2d4a6f'" 
+                                onmouseout="this.style.background='#1e3a5f'"
+                                title="OR">∨</button>
+                        <button type="button" onclick="insertAtCursor(document.getElementById('logic-input'), '¬')" 
+                                style="padding: 6px 12px; background: #1e3a5f; border: 1px solid #2d4a6f; border-radius: 4px; color: #f0f4f8; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s;" 
+                                onmouseover="this.style.background='#2d4a6f'" 
+                                onmouseout="this.style.background='#1e3a5f'"
+                                title="NOT">¬</button>
+                        <button type="button" onclick="insertAtCursor(document.getElementById('logic-input'), '→')" 
+                                style="padding: 6px 12px; background: #1e3a5f; border: 1px solid #2d4a6f; border-radius: 4px; color: #f0f4f8; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s;" 
+                                onmouseover="this.style.background='#2d4a6f'" 
+                                onmouseout="this.style.background='#1e3a5f'"
+                                title="IMPLIES">→</button>
+                        <button type="button" onclick="insertAtCursor(document.getElementById('logic-input'), '(')" 
+                                style="padding: 6px 12px; background: #1e3a5f; border: 1px solid #2d4a6f; border-radius: 4px; color: #f0f4f8; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s;" 
+                                onmouseover="this.style.background='#2d4a6f'" 
+                                onmouseout="this.style.background='#1e3a5f'"
+                                title="Left Parenthesis">(</button>
+                        <button type="button" onclick="insertAtCursor(document.getElementById('logic-input'), ')')" 
+                                style="padding: 6px 12px; background: #1e3a5f; border: 1px solid #2d4a6f; border-radius: 4px; color: #f0f4f8; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s;" 
+                                onmouseover="this.style.background='#2d4a6f'" 
+                                onmouseout="this.style.background='#1e3a5f'"
+                                title="Right Parenthesis">)</button>
+                    </div>
+                    
                     <textarea id="logic-input" placeholder="e.g., (A ∧ B) → C">((active_policy ∧ premium_paid) ∧ (valid_claim_date ∧ ¬excluded_condition)) → claim_approved</textarea>
+                    
+                    <!-- Normalized Preview -->
+                    <div id="normalized-preview" style="display: none; font-size: 11px; color: #ffc857; margin-top: 6px; padding: 6px; background: #1e3a5f; border-radius: 4px;">
+                        <strong>Normalized:</strong> <span id="normalized-text"></span>
+                    </div>
+                    
+                    <!-- Validation Errors -->
+                    <div id="validation-errors" style="display: none; font-size: 11px; color: #ff6b6b; margin-top: 6px; padding: 6px; background: #2a1a1a; border-radius: 4px; border: 1px solid #ff6b6b;">
+                        <strong>Validation Errors:</strong>
+                        <ul id="validation-errors-list" style="margin: 4px 0 0 0; padding-left: 20px;"></ul>
+                    </div>
+                    
                     <p id="logic-description" style="font-size: 11px; color: #8b9cb3; margin-top: 6px;">If policy active AND premium paid AND valid date AND not excluded, then approve</p>
                 </div>
                 
@@ -1145,9 +1193,18 @@
     </div>
 
     <script>
-        // VERSION: 2024-12-19-v2 - Fixed audit trail to use GPMSC API only
+        // VERSION: 2024-12-19-v3 - Added input normalization, validation, and Mermaid hardening
         // Configuration - override via query param: ?api=https://... or ?gpmsc=https://...&proofplay=https://...
         // CRITICAL: Audit log database is on GPMSC API (gpmsc-api.onrender.com), NOT ProofPlay
+        
+        // ============================================================
+        // INPUT HARDENING CONSTANTS
+        // ============================================================
+        const MAX_EXPR_LEN = 2000;
+        const MAX_DEPTH = 50;
+        const MAX_TOKENS_FOR_DIAGRAM = 250;
+        const RENDER_DEBOUNCE_MS = 300;
+        
         const CONFIG = {
             GPMSC_API_URL: new URLSearchParams(window.location.search).get('gpmsc') 
                 || new URLSearchParams(window.location.search).get('api')
@@ -1199,10 +1256,191 @@
         let currentMode = 'formal';
         
         // ============================================================
+        // INPUT NORMALIZATION & VALIDATION
+        // ============================================================
+        
+        /**
+         * Normalizes user input by converting friendly operators to strict mathematical notation
+         * @param {string} raw - Raw user input
+         * @returns {{normalized: string, changed: boolean, warnings: string[]}}
+         */
+        function normalizeLogicInput(raw) {
+            if (!raw || typeof raw !== 'string') {
+                return { normalized: '', changed: false, warnings: [] };
+            }
+            
+            let normalized = raw;
+            const warnings = [];
+            let changed = false;
+            
+            // Protect variable tokens like V(x) from replacement
+            const varPattern = /V\([^)]+\)/g;
+            const varMatches = [];
+            let match;
+            while ((match = varPattern.exec(normalized)) !== null) {
+                varMatches.push({ text: match[0], index: match.index });
+            }
+            
+            // Replace variables with placeholders
+            const placeholders = [];
+            varMatches.forEach((m, i) => {
+                const placeholder = `__VAR_PLACEHOLDER_${i}__`;
+                placeholders.push({ placeholder, original: m.text });
+                normalized = normalized.substring(0, m.index) + placeholder + normalized.substring(m.index + m.text.length);
+            });
+            
+            // Normalize whitespace (collapse multiple spaces)
+            const beforeWhitespace = normalized;
+            normalized = normalized.replace(/\s+/g, ' ').trim();
+            if (beforeWhitespace !== normalized) {
+                changed = true;
+            }
+            
+            // Convert friendly operators (case-insensitive, whole word or symbol)
+            const replacements = [
+                // AND variations
+                { pattern: /\bAND\b/gi, replacement: '∧' },
+                { pattern: /\band\b/gi, replacement: '∧' },
+                { pattern: /&&/g, replacement: '∧' },
+                // OR variations
+                { pattern: /\bOR\b/gi, replacement: '∨' },
+                { pattern: /\bor\b/gi, replacement: '∨' },
+                { pattern: /\|\|/g, replacement: '∨' },
+                // NOT variations
+                { pattern: /\bNOT\s+/gi, replacement: '¬' },
+                { pattern: /\bnot\s+/gi, replacement: '¬' },
+                { pattern: /!\s*/g, replacement: '¬' },
+                { pattern: /~(?=\w)/g, replacement: '¬' },
+                // IMPLIES variations
+                { pattern: /->/g, replacement: '→' },
+                { pattern: /=>/g, replacement: '→' },
+                { pattern: /\bIMPLIES\b/gi, replacement: '→' },
+                { pattern: /\bimplies\b/gi, replacement: '→' },
+            ];
+            
+            replacements.forEach(({ pattern, replacement }) => {
+                const before = normalized;
+                normalized = normalized.replace(pattern, replacement);
+                if (before !== normalized) {
+                    changed = true;
+                }
+            });
+            
+            // Restore variable placeholders
+            placeholders.forEach(({ placeholder, original }) => {
+                normalized = normalized.replace(placeholder, original);
+            });
+            
+            return { normalized, changed, warnings };
+        }
+        
+        /**
+         * Validates logic input for safety and correctness
+         * @param {string} expr - Expression to validate
+         * @returns {{ok: boolean, errors: string[], stats: {len: number, depth: number, tokens: number}}}
+         */
+        function validateLogicInput(expr) {
+            const result = {
+                ok: true,
+                errors: [],
+                stats: { len: 0, depth: 0, tokens: 0 }
+            };
+            
+            if (!expr || typeof expr !== 'string') {
+                result.ok = false;
+                result.errors.push('Expression is empty');
+                return result;
+            }
+            
+            result.stats.len = expr.length;
+            
+            // Check length
+            if (expr.length > MAX_EXPR_LEN) {
+                result.ok = false;
+                result.errors.push(`Expression too long (${expr.length} chars, max ${MAX_EXPR_LEN})`);
+            }
+            
+            // Allowed character set: letters, numbers, underscore, whitespace, operators, parentheses
+            const allowedChars = /^[a-zA-Z0-9_\s()¬∧∨→↔,.\-]+$/;
+            if (!allowedChars.test(expr)) {
+                result.ok = false;
+                const invalidChars = expr.split('').filter(c => !allowedChars.test(c));
+                const uniqueInvalid = [...new Set(invalidChars)];
+                result.errors.push(`Unsupported characters: ${uniqueInvalid.join(', ')}`);
+            }
+            
+            // Check balanced parentheses and calculate depth
+            let depth = 0;
+            let maxDepth = 0;
+            let parenMismatch = false;
+            
+            for (let i = 0; i < expr.length; i++) {
+                if (expr[i] === '(') {
+                    depth++;
+                    maxDepth = Math.max(maxDepth, depth);
+                } else if (expr[i] === ')') {
+                    depth--;
+                    if (depth < 0) {
+                        parenMismatch = true;
+                        result.errors.push(`Unbalanced parentheses: extra ')' at position ${i + 1}`);
+                        break;
+                    }
+                }
+            }
+            
+            if (depth > 0) {
+                parenMismatch = true;
+                result.errors.push(`Unbalanced parentheses: ${depth} unclosed '('`);
+            }
+            
+            if (parenMismatch) {
+                result.ok = false;
+            }
+            
+            result.stats.depth = maxDepth;
+            
+            // Check depth limit
+            if (maxDepth > MAX_DEPTH) {
+                result.ok = false;
+                result.errors.push(`Expression too deeply nested (depth ${maxDepth}, max ${MAX_DEPTH})`);
+            }
+            
+            // Estimate token count (rough: split by operators and whitespace)
+            const tokens = expr.split(/[\s¬∧∨→↔()]+/).filter(t => t.length > 0);
+            result.stats.tokens = tokens.length;
+            
+            if (tokens.length > MAX_TOKENS_FOR_DIAGRAM) {
+                result.errors.push(`Expression has many tokens (${tokens.length}). Diagram may be simplified.`);
+                // Warning, not fatal
+            }
+            
+            return result;
+        }
+        
+        /**
+         * Inserts text at cursor position in a textarea
+         * @param {HTMLTextAreaElement} textarea - The textarea element
+         * @param {string} text - Text to insert
+         */
+        function insertAtCursor(textarea, text) {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const value = textarea.value;
+            
+            textarea.value = value.substring(0, start) + text + value.substring(end);
+            textarea.selectionStart = textarea.selectionEnd = start + text.length;
+            textarea.focus();
+            
+            // Trigger input event for any listeners
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        
+        // ============================================================
         // LOGIC VISUALIZATION FUNCTIONS
         // ============================================================
         
         let graphCounter = 0; // For unique mermaid IDs
+        let renderDebounceTimer = null; // For debouncing Mermaid renders
         
         function switchTab(tabName) {
             // Update tab buttons
@@ -1378,6 +1616,23 @@
             const legend = document.getElementById('graph-legend');
             const tabs = document.getElementById('result-tabs');
             
+            // Validate before rendering (prevent crashes)
+            const validation = validateLogicInput(logicString);
+            if (!validation.ok) {
+                container.innerHTML = '<div class="no-graph-message">Cannot visualize: ' + validation.errors[0] + '</div>';
+                legend.style.display = 'none';
+                tabs.style.display = 'flex';
+                return;
+            }
+            
+            // Check token count (prevent overly complex diagrams)
+            if (validation.stats.tokens > MAX_TOKENS_FOR_DIAGRAM) {
+                container.innerHTML = `<div class="no-graph-message">Expression too complex to visualize (${validation.stats.tokens} tokens, max ${MAX_TOKENS_FOR_DIAGRAM}). View JSON for details.</div>`;
+                legend.style.display = 'none';
+                tabs.style.display = 'flex';
+                return;
+            }
+            
             const mermaidCode = generateMermaidGraph(logicString);
             
             if (!mermaidCode) {
@@ -1395,7 +1650,7 @@
                 graphCounter++;
                 const graphId = `logic-graph-${graphCounter}`;
                 
-                // Render the graph
+                // Render the graph with error handling
                 const { svg } = await mermaid.render(graphId, mermaidCode);
                 container.innerHTML = svg;
                 
@@ -1410,10 +1665,20 @@
                 
             } catch (e) {
                 console.error('Mermaid render error:', e);
-                container.innerHTML = '<div class="no-graph-message">Error rendering graph. View JSON for details.</div>';
+                container.innerHTML = '<div class="no-graph-message">Error rendering graph. The expression may be too complex or contain unsupported syntax. View JSON for details.</div>';
                 legend.style.display = 'none';
                 tabs.style.display = 'flex';
             }
+        }
+        
+        // Debounced version for real-time rendering (if needed in future)
+        function renderLogicGraphDebounced(logicString, isValid) {
+            if (renderDebounceTimer) {
+                clearTimeout(renderDebounceTimer);
+            }
+            renderDebounceTimer = setTimeout(() => {
+                renderLogicGraph(logicString, isValid);
+            }, RENDER_DEBOUNCE_MS);
         }
         
         // ============================================================
@@ -1512,6 +1777,15 @@
             
             // Clear previous results
             document.getElementById('logic-result').classList.remove('show');
+            
+            // Clear validation errors and normalized preview
+            document.getElementById('validation-errors').style.display = 'none';
+            document.getElementById('normalized-preview').style.display = 'none';
+            
+            // Re-validate input after mode switch
+            if (typeof updateInputValidation === 'function') {
+                setTimeout(updateInputValidation, 100);
+            }
         }
 
         function setExample(key) {
@@ -1541,16 +1815,55 @@
 
         async function verifyLogic() {
             const btn = document.getElementById('verify-btn');
-            const input = document.getElementById('logic-input').value.trim();
+            const rawInput = document.getElementById('logic-input').value.trim();
             const resultDiv = document.getElementById('logic-result');
             const statusEl = document.getElementById('logic-status');
             const timeEl = document.getElementById('logic-time');
             const detailsEl = document.getElementById('logic-details');
             const bodyEl = document.getElementById('logic-body');
 
-            if (!input) {
+            if (!rawInput) {
                 alert('Please enter a ' + (currentMode === 'formal' ? 'logical expression' : 'business rule') + ' to verify');
                 return;
+            }
+
+            // Normalize input (for formal mode only)
+            let input = rawInput;
+            let normalizedResult = null;
+            if (currentMode === 'formal') {
+                normalizedResult = normalizeLogicInput(rawInput);
+                input = normalizedResult.normalized;
+            }
+
+            // Validate input
+            const validation = validateLogicInput(input);
+            if (!validation.ok) {
+                // Show validation errors
+                const errorsDiv = document.getElementById('validation-errors');
+                const errorsList = document.getElementById('validation-errors-list');
+                errorsDiv.style.display = 'block';
+                errorsList.innerHTML = validation.errors.map(e => `<li>${e}</li>`).join('');
+                
+                // Disable verify button
+                btn.disabled = true;
+                btn.innerHTML = 'Fix errors above';
+                
+                // Show helpful hint
+                alert('Please fix the validation errors:\n\n' + validation.errors.join('\n') + '\n\nTip: Use operators ∧ ∨ ¬ → (you can type AND/OR/NOT/->)');
+                return;
+            }
+
+            // Hide validation errors if validation passed
+            document.getElementById('validation-errors').style.display = 'none';
+            
+            // Show normalized preview if normalization changed the input
+            const normalizedPreview = document.getElementById('normalized-preview');
+            const normalizedText = document.getElementById('normalized-text');
+            if (normalizedResult && normalizedResult.changed) {
+                normalizedPreview.style.display = 'block';
+                normalizedText.textContent = input;
+            } else {
+                normalizedPreview.style.display = 'none';
             }
 
             btn.disabled = true;
@@ -1574,6 +1887,11 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ proposition: input })
                     });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                        throw new Error(errorData.detail || errorData.message || `HTTP ${response.status}`);
+                    }
                     data = await response.json();
                     
                     const elapsed = Date.now() - startTime;
@@ -1743,10 +2061,31 @@
                 }
 
             } catch (e) {
+                console.error('Error in verifyLogic:', e);
                 statusEl.textContent = '✗ ERROR';
                 statusEl.className = 'result-status error';
                 timeEl.textContent = `${Date.now() - startTime}ms`;
-                bodyEl.textContent = e.message;
+                
+                // Show better error message with hints
+                const errorMsg = e.message || 'Unknown error';
+                const normalizedHint = normalizedResult && normalizedResult.changed 
+                    ? `\n\nNormalized expression sent: ${input}` 
+                    : '';
+                const hint = `\n\nTip: Use operators: ∧ ∨ ¬ → (you can type AND/OR/NOT/->)`;
+                
+                bodyEl.innerHTML = `
+                    <div style="color: #ff6b6b; margin-bottom: 10px;">
+                        <strong>Error:</strong> ${errorMsg}
+                    </div>
+                    ${normalizedResult && normalizedResult.changed ? `
+                    <div style="color: #ffc857; margin-bottom: 10px;">
+                        <strong>Normalized expression sent:</strong> ${input}
+                    </div>
+                    ` : ''}
+                    <div style="color: #8b9cb3; font-size: 11px;">
+                        ${hint}
+                    </div>
+                `;
             }
 
             btn.disabled = false;
@@ -1983,9 +2322,65 @@
             verifyAuditIntegrity();
         }
 
+        // ============================================================
+        // REAL-TIME INPUT VALIDATION
+        // ============================================================
+        
+        function updateInputValidation() {
+            const input = document.getElementById('logic-input');
+            const rawInput = input.value.trim();
+            const btn = document.getElementById('verify-btn');
+            const errorsDiv = document.getElementById('validation-errors');
+            const errorsList = document.getElementById('validation-errors-list');
+            const normalizedPreview = document.getElementById('normalized-preview');
+            const normalizedText = document.getElementById('normalized-text');
+            
+            // Only validate in formal mode
+            if (currentMode !== 'formal' || !rawInput) {
+                errorsDiv.style.display = 'none';
+                normalizedPreview.style.display = 'none';
+                btn.disabled = false;
+                return;
+            }
+            
+            // Normalize
+            const normalizedResult = normalizeLogicInput(rawInput);
+            const normalized = normalizedResult.normalized;
+            
+            // Show normalized preview if changed
+            if (normalizedResult.changed) {
+                normalizedPreview.style.display = 'block';
+                normalizedText.textContent = normalized;
+            } else {
+                normalizedPreview.style.display = 'none';
+            }
+            
+            // Validate
+            const validation = validateLogicInput(normalized);
+            if (!validation.ok) {
+                errorsDiv.style.display = 'block';
+                errorsList.innerHTML = validation.errors.map(e => `<li>${e}</li>`).join('');
+                btn.disabled = true;
+            } else {
+                errorsDiv.style.display = 'none';
+                btn.disabled = false;
+            }
+        }
+        
         // Initialize on page load (after all functions are defined)
         checkStatus();
         loadAuditStream();
+        
+        // Set up real-time validation on input
+        document.addEventListener('DOMContentLoaded', function() {
+            const input = document.getElementById('logic-input');
+            if (input) {
+                input.addEventListener('input', updateInputValidation);
+                input.addEventListener('blur', updateInputValidation);
+                // Initial validation
+                updateInputValidation();
+            }
+        });
     </script>
 </body>
 </html>
