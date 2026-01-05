@@ -2260,10 +2260,33 @@
                 bodyEl.textContent = JSON.stringify(data, null, 2);
 
                 // Render logic visualization graph
-                const expressionToVisualize = currentMode === 'formal' 
-                    ? input 
-                    : (data.formal_translation || input);
-                await renderLogicGraph(expressionToVisualize, isLogicallyValid);
+                // CRITICAL: Always prefer structured formal_translation if available (from backend parsing)
+                // This ensures structured logic like "(A) AND (B)" renders as a tree, not a single node
+                let expressionToVisualize;
+                if (currentMode === 'formal') {
+                    // Formal mode: use input directly (already in formal syntax)
+                    expressionToVisualize = input;
+                } else {
+                    // Business mode: prefer formal_translation (backend-parsed structured format)
+                    // Only fall back to input if no formal_translation exists (unstructured text)
+                    expressionToVisualize = data.formal_translation || input;
+                }
+                
+                // Only render graph if we have a structured expression (not pure unstructured text)
+                // If formal_translation exists, it means backend successfully parsed it into structure
+                if (expressionToVisualize && expressionToVisualize.trim()) {
+                    await renderLogicGraph(expressionToVisualize, isLogicallyValid);
+                } else {
+                    // No structured expression available - hide graph
+                    const container = document.getElementById('mermaid-container');
+                    const tabs = document.getElementById('result-tabs');
+                    if (container) {
+                        container.innerHTML = '<div class="no-graph-message">No structured logic to visualize. Backend could not parse input into formal logic.</div>';
+                    }
+                    if (tabs) {
+                        tabs.style.display = 'flex';
+                    }
+                }
 
                 // Auto-fill audit ID if present (check multiple locations)
                 const auditId = data?.audit_id || data?.proof?.anchor_id || data?.anchor_id;
