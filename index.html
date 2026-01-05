@@ -815,7 +815,7 @@
                     </p>
                 </div>
                 
-                <button class="btn btn-secondary" onclick="verifyGame()" id="game-btn">
+                <button class="btn btn-secondary" onclick="verifyAuditIntegrity()" id="game-btn">
                     Verify Audit Integrity
                 </button>
                 
@@ -1327,9 +1327,11 @@
             btn.textContent = 'Verify Rule Consistency';
         }
 
-        // VERSION: 2024-12-19-v2 - Fixed to use GPMSC API for audit verification
-        async function verifyGame() {
-            console.log('=== verifyGame() called - VERSION: 2024-12-19-v2 ===');
+        // VERSION: 2024-12-19-v6 - RENAMED from verifyGame to verifyAuditIntegrity to break cache
+        // OLD FUNCTION verifyGame() DELETED - DO NOT USE
+        async function verifyAuditIntegrity() {
+            console.log('=== verifyAuditIntegrity() called - VERSION: 2024-12-19-v6 ===');
+            console.log('⚠️ If you see verifyGame() in console, you are running OLD CACHED CODE');
             const btn = document.getElementById('game-btn');
             const auditId = document.getElementById('game-id').value.trim();
             const resultDiv = document.getElementById('game-result');
@@ -1541,7 +1543,7 @@
             }, 2000);
             
             // Automatically verify
-            verifyGame();
+            verifyAuditIntegrity();
         }
     </script>
 </body>
