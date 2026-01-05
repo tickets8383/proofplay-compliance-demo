@@ -3014,9 +3014,16 @@
                     // Convert to image data
                     const imgData = canvas.toDataURL('image/png');
                     
-                    // Calculate dimensions to fit on page
-                    const imgWidth = 170;
+                    // Calculate dimensions - use 50% of page width (page width is ~210mm = ~210 points)
+                    // Leave margins: 20pt left, 20pt right = 40pt total, so usable width is 170pt
+                    // 50% of usable width = 85pt, but let's use 50% of full page = 105pt
+                    const pageWidth = doc.internal.pageSize.getWidth();
+                    const imgWidth = pageWidth * 0.5; // 50% of page width
                     const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                    
+                    // Center the image horizontally (page width - image width) / 2
+                    const pageWidth = doc.internal.pageSize.getWidth();
+                    const imgX = (pageWidth - imgWidth) / 2;
                     
                     // Check if we need a new page
                     if (yPos + imgHeight > 250) {
@@ -3024,8 +3031,8 @@
                         yPos = 20;
                     }
                     
-                    // Add image to PDF
-                    doc.addImage(imgData, 'PNG', 20, yPos, imgWidth, imgHeight);
+                    // Add image to PDF (centered, 50% of page width)
+                    doc.addImage(imgData, 'PNG', imgX, yPos, imgWidth, imgHeight);
                     yPos += imgHeight + 10;
                 } catch (error) {
                     console.error('Failed to capture graph:', error);
