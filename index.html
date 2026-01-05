@@ -2946,6 +2946,10 @@
             
             // Manual splitting that preserves Unicode characters correctly
             // Don't use splitTextToSize as it may corrupt multi-byte Unicode characters (∧, →, etc.)
+            // Add a small buffer to account for font rendering differences
+            const widthBuffer = 2; // 2pt buffer to prevent cutoff
+            const effectiveTextWidth = textWidth - widthBuffer;
+            
             const lines = [];
             let currentLine = '';
             
@@ -2955,11 +2959,11 @@
             tokens.forEach(token => {
                 if (!token) return; // Skip empty tokens
                 
-                // Test if adding this token would exceed width
+                // Test if adding this token would exceed width (with buffer)
                 const testLine = currentLine + token;
                 const testWidth = doc.getTextWidth(testLine);
                 
-                if (testWidth <= textWidth) {
+                if (testWidth <= effectiveTextWidth) {
                     // Fits, add to current line
                     currentLine = testLine;
                 } else {
@@ -2972,7 +2976,7 @@
                     
                     // Check if token itself is too wide
                     const tokenWidth = doc.getTextWidth(token);
-                    if (tokenWidth > textWidth) {
+                    if (tokenWidth > effectiveTextWidth) {
                         // Token is too wide, need to split it character by character
                         // Use Array.from() to properly handle Unicode surrogate pairs
                         const chars = Array.from(token); // Properly handles Unicode
@@ -2980,7 +2984,7 @@
                         chars.forEach(char => {
                             const testChar = charLine + char;
                             const testCharWidth = doc.getTextWidth(testChar);
-                            if (testCharWidth <= textWidth) {
+                            if (testCharWidth <= effectiveTextWidth) {
                                 charLine = testChar;
                             } else {
                                 if (charLine) {
