@@ -960,11 +960,19 @@
                 || 'https://proofplay-sx3q.onrender.com'
         };
         
+        // VALIDATE CONFIG IMMEDIATELY - HARD STOP if wrong
+        if (CONFIG.GPMSC_API_URL.includes('proofplay') || CONFIG.GPMSC_API_URL.includes('sx3q')) {
+            console.error('❌❌❌ CRITICAL: CONFIG.GPMSC_API_URL is WRONG!', CONFIG.GPMSC_API_URL);
+            alert('ERROR: GPMSC_API_URL is pointing to ProofPlay! This is wrong. Please refresh.');
+            CONFIG.GPMSC_API_URL = 'https://gpmsc-api.onrender.com'; // Force correct value
+        }
+        
         // Log configuration on load for debugging
-        console.log('=== GPMSC AUDIT TRAIL DEMO v2 ===');
-        console.log('API Configuration:', CONFIG);
+        console.log('=== GPMSC AUDIT TRAIL DEMO v5 ===');
+        console.log('API Configuration:', JSON.stringify(CONFIG, null, 2));
         console.log('Audit log is stored in GPMSC API:', CONFIG.GPMSC_API_URL);
         console.log('ProofPlay API (NOT used for audit):', CONFIG.PROOFPLAY_API_URL);
+        console.log('✅ CONFIG validated - GPMSC_API_URL is correct');
         
         // CRITICAL: Ensure audit ID input is ALWAYS empty on load (no default bingo game ID)
         // This runs immediately and on DOMContentLoaded to catch any cached values
