@@ -2119,18 +2119,29 @@
                     const elapsed = Date.now() - startTime;
                     timeEl.textContent = `${elapsed}ms`;
 
-                    // Set validity for graph rendering
-                    isLogicallyValid = data.is_logically_valid && !data.is_paradox;
+                    // CRITICAL: For natural language, check both is_logically_valid and is_contradiction
+                    // Also check for UNSAT status if present (consistency mode: UNSAT = FAIL)
+                    const isUnsatNatural = data.smt_status === "unsat" || 
+                                          (data.smt_satisfiable === false && data.smt_status !== "sat" && data.smt_status !== "unknown");
+                    const isContradictionNatural = data.is_contradiction || isUnsatNatural;
+                    
+                    // For consistency checking: UNSAT = Contradiction = FAIL
+                    isLogicallyValid = data.is_logically_valid && !data.is_paradox && !isContradictionNatural;
                     
                     // Update stored verification data with validity
                     if (currentVerificationData) {
                         currentVerificationData.isLogicallyValid = isLogicallyValid;
                     }
 
-                    // Determine result status
-                    if (data.is_paradox) {
-                        statusEl.textContent = '⚠️ PARADOX / CIRCULAR RULE';
-                        statusEl.className = 'result-status warning';
+                    // Determine result status - RED badge for paradox OR contradiction
+                    if (data.is_paradox || isContradictionNatural) {
+                        if (data.is_paradox) {
+                            statusEl.textContent = '⚠️ PARADOX / CIRCULAR RULE';
+                            statusEl.className = 'result-status warning';
+                        } else {
+                            statusEl.textContent = '✗ CONTRADICTION DETECTED';
+                            statusEl.className = 'result-status error';
+                        }
                     } else if (data.is_logically_valid) {
                         statusEl.textContent = '✓ LOGICALLY CONSISTENT';
                         statusEl.className = 'result-status success';
