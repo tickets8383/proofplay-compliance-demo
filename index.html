@@ -2514,12 +2514,7 @@
                     helpText = '<br><small style="color: #8b9cb3;">The backend service may be restarting or down. Please try again in a moment.</small>';
                 }
                 
-                bodyEl.innerHTML = `
-                    <div style="color: #ff6b6b; margin-bottom: 10px;">
-                        <strong>Error:</strong> ${errorMsg}
-                    </div>
-                    ${helpText ? `<div style="color: #8b9cb3; font-size: 11px;">${helpText}</div>` : ''}
-                `;
+                bodyEl.textContent = `Error: ${errorMsg}${helpText ? '\n\n' + helpText : ''}`;
             }
 
             btn.disabled = false;
