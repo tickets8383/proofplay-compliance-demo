@@ -2259,13 +2259,38 @@
         async function verifyAuditIntegrity() {
             console.log('=== verifyAuditIntegrity() called - VERSION: 2024-12-19-v6 ===');
             console.log('✅ This is the NEW function - using GPMSC API only');
+            
             const btn = document.getElementById('game-btn');
-            const auditId = document.getElementById('game-id').value.trim();
+            const gameIdInput = document.getElementById('game-id');
+            
+            if (!btn) {
+                console.error('game-btn element not found');
+                return;
+            }
+            if (!gameIdInput) {
+                console.error('game-id element not found');
+                return;
+            }
+            
+            const auditId = gameIdInput.value.trim();
             const resultDiv = document.getElementById('game-result');
             const statusEl = document.getElementById('game-status');
             const timeEl = document.getElementById('game-time');
             const detailsEl = document.getElementById('game-details');
             const bodyEl = document.getElementById('game-body');
+            
+            if (!resultDiv || !statusEl || !timeEl || !detailsEl || !bodyEl) {
+                console.error('Missing result elements:', {
+                    resultDiv: !!resultDiv,
+                    statusEl: !!statusEl,
+                    timeEl: !!timeEl,
+                    detailsEl: !!detailsEl,
+                    bodyEl: !!bodyEl
+                });
+                return;
+            }
+            
+            console.log('Audit ID:', auditId);
 
             if (!auditId) {
                 alert('Please enter an audit record ID');
