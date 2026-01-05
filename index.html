@@ -2192,15 +2192,23 @@
                 }
                 
                 console.log('✅ Making fetch request to:', url);
-                const response = await fetch(url);
+                const response = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'omit'
+                });
                 console.log('Response status:', response.status);
                 const elapsed = Date.now() - startTime;
                 
                 if (!response.ok) {
                     if (response.status === 404) {
                         throw new Error(`Audit record not found. Make sure you're using an audit_id from a GPMSC /verify response, not from ProofPlay.`);
+                    } else if (response.status === 502) {
+                        throw new Error(`Backend service unavailable (502). The service may be restarting. Please try again in a moment.`);
+                    } else if (response.status >= 500) {
+                        throw new Error(`Server error (${response.status}). Please try again later.`);
                     }
-                    throw new Error(`Record not found (${response.status})`);
+                    throw new Error(`Request failed (${response.status})`);
                 }
 
                 const data = await response.json();
@@ -2257,10 +2265,30 @@
                 bodyEl.textContent = JSON.stringify(data, null, 2);
 
             } catch (e) {
+                console.error('Error in verifyAuditIntegrity:', e);
                 statusEl.textContent = '✗ ERROR';
                 statusEl.className = 'result-status error';
                 timeEl.textContent = `${Date.now() - startTime}ms`;
-                bodyEl.textContent = e.message;
+                
+                // Show better error message
+                let errorMsg = e.message || 'Unknown error';
+                let helpText = '';
+                
+                // Check for CORS error
+                if (errorMsg.includes('CORS') || errorMsg.includes('Access-Control-Allow-Origin') || errorMsg.includes('Failed to fetch')) {
+                    errorMsg = 'CORS Error: Backend not configured for this domain';
+                    helpText = '<br><small style="color: #8b9cb3;">The backend needs to add this domain to CORS_ORIGINS environment variable.</small>';
+                } else if (errorMsg.includes('502') || errorMsg.includes('Bad Gateway')) {
+                    errorMsg = 'Backend service unavailable (502)';
+                    helpText = '<br><small style="color: #8b9cb3;">The backend service may be restarting or down. Please try again in a moment.</small>';
+                }
+                
+                bodyEl.innerHTML = `
+                    <div style="color: #ff6b6b; margin-bottom: 10px;">
+                        <strong>Error:</strong> ${errorMsg}
+                    </div>
+                    ${helpText ? `<div style="color: #8b9cb3; font-size: 11px;">${helpText}</div>` : ''}
+                `;
             }
 
             btn.disabled = false;
