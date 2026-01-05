@@ -2944,13 +2944,13 @@
             
             // splitTextToSize returns an array of strings that fit within the width
             // It automatically uses the current font settings
-            const lines = doc.splitTextToSize(logicStatement, textWidth);
+            let lines = doc.splitTextToSize(logicStatement, textWidth);
             
             // Verify lines were split correctly
             if (!Array.isArray(lines) || lines.length === 0) {
                 // Fallback: split manually if splitTextToSize fails
                 const words = logicStatement.split(' ');
-                const lines = [];
+                lines = [];
                 let currentLine = '';
                 words.forEach(word => {
                     const testLine = currentLine ? currentLine + ' ' + word : word;
