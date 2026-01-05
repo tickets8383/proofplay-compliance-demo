@@ -2035,10 +2035,32 @@
                             <span class="verification-label">Translation Confidence:</span>
                             <span class="verification-value ${confidence < 0.7 ? 'warning' : ''}">${(confidence * 100).toFixed(0)}%</span>
                         </div>
+                        ${data.normalized_statement && data.normalized_statement !== input ? `
+                        <div class="verification-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #2d4a6f;">
+                            <span class="verification-label" style="color: #ffc857;">📝 Normalized:</span>
+                            <span class="verification-value" style="color: #8b9cb3; font-size: 11px; font-style: italic;">${data.normalized_statement}</span>
+                        </div>
+                        ` : ''}
+                        ${data.transforms_applied && data.transforms_applied.length > 0 ? `
+                        <div class="verification-row" style="margin-top: 6px;">
+                            <span class="verification-label" style="color: #ffc857;">🔧 Transforms Applied:</span>
+                            <span class="verification-value" style="color: #8b9cb3; font-size: 10px;">
+                                <ul style="margin: 4px 0 0 0; padding-left: 20px;">
+                                    ${data.transforms_applied.map(t => `<li>${t}</li>`).join('')}
+                                </ul>
+                            </span>
+                        </div>
+                        ` : ''}
                         ${data.formal_translation ? `
                         <div class="verification-row">
                             <span class="verification-label">Translated To:</span>
                             <span class="verification-value" style="font-family: monospace; font-size: 10px;">${data.formal_translation}</span>
+                        </div>
+                        ` : ''}
+                        ${data.pattern_type ? `
+                        <div class="verification-row">
+                            <span class="verification-label">Pattern Type:</span>
+                            <span class="verification-value" style="font-size: 10px; text-transform: capitalize;">${data.pattern_type.replace(/_/g, ' ')}</span>
                         </div>
                         ` : ''}
                         <div class="verification-row">
@@ -2047,7 +2069,7 @@
                         </div>
                         <div class="verification-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #2d4a6f;">
                             <span class="verification-label" style="color: #ffc857;">⚠️ Note:</span>
-                            <span class="verification-value" style="color: #8b9cb3; font-size: 10px;">Business mode uses NLP translation. For production rules, verify the formal translation or use Formal Mode.</span>
+                            <span class="verification-value" style="color: #8b9cb3; font-size: 10px;">Business mode uses deterministic preprocessing + NLP translation. All transforms are logged for audit compliance.</span>
                         </div>
                     `;
                 }
