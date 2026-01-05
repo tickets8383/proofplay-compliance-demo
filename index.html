@@ -2935,8 +2935,9 @@
             // Use a very conservative width to ensure text doesn't overflow
             const pageWidth = doc.internal.pageSize.getWidth();
             const margin = 20; // 20pt margin on each side
-            // Use only 75% of available width to be very safe with special characters and Unicode
-            const textWidth = (pageWidth - (margin * 2)) * 0.75;
+            // Use only 70% of available width to account for font rendering and ensure no cutoff
+            // This is more conservative than the image to prevent text overflow
+            const textWidth = (pageWidth - (margin * 2)) * 0.70;
             
             // Ensure font is set before splitting (splitTextToSize uses current font settings)
             // Times font should support Unicode characters like ∧, →, etc.
