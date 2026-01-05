@@ -2311,6 +2311,9 @@
                 const data = await response.json();
                 const records = data.records || [];
                 
+                console.log('Audit stream records received:', records.length);
+                console.log('Sample record:', records[0]);
+                
                 if (records.length === 0) {
                     tbody.innerHTML = `
                         <tr>
@@ -2329,6 +2332,7 @@
                     let statusText = '—';
                     let statusClass = '';
                     
+                    // Check valid status (can be true, false, or null/undefined)
                     if (record.valid === true) {
                         statusText = 'Valid';
                         statusClass = 'audit-status-valid';
@@ -2336,7 +2340,7 @@
                         statusText = 'Invalid';
                         statusClass = 'audit-status-invalid';
                     } else if (record.status) {
-                        // Use status from backend (sat, unsat, paradox, contradiction, etc.)
+                        // Use status from backend (sat, unsat, paradox, contradiction, valid, invalid, etc.)
                         const statusLower = record.status.toLowerCase();
                         if (statusLower === 'sat' || statusLower === 'valid') {
                             statusText = 'Valid';
@@ -2353,15 +2357,28 @@
                         }
                     }
                     
-                    const shortId = record.id ? record.id.substring(0, 8) + '...' : record.audit_id ? record.audit_id.substring(0, 8) + '...' : 'N/A';
+                    // Get the ID - try multiple fields (backend returns both id and audit_id)
+                    const recordId = record.id || record.audit_id || 'N/A';
+                    const shortId = recordId !== 'N/A' ? recordId.substring(0, 8) + '...' : 'N/A';
+                    
+                    // Get endpoint - try multiple fields and format nicely
+                    let endpointDisplay = record.endpoint || record.operation || '—';
+                    // Format endpoint for display (remove leading slash if present)
+                    if (endpointDisplay && endpointDisplay.startsWith('/')) {
+                        endpointDisplay = endpointDisplay.substring(1);
+                    }
+                    // Replace underscores with spaces and capitalize words
+                    if (endpointDisplay && endpointDisplay !== '—') {
+                        endpointDisplay = endpointDisplay.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    }
                     
                     return `
                         <tr>
                             <td>${timestamp}</td>
-                            <td>${record.endpoint || '—'}</td>
+                            <td>${endpointDisplay}</td>
                             <td class="${statusClass}">${statusText}</td>
                             <td>
-                                <span class="audit-id-link" onclick="selectAuditId('${record.id}')">${shortId}</span>
+                                <span class="audit-id-link" onclick="selectAuditId('${recordId}')">${shortId}</span>
                             </td>
                         </tr>
                     `;
