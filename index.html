@@ -2931,20 +2931,36 @@
                 logicStatement = `Original: ${logicStatement}\nFormal: ${data.formal_translation}`;
             }
             
-            // Split long text into multiple lines (use full width with margins to match graph)
+            // Calculate available width for text (page width minus margins)
             const pageWidth = doc.internal.pageSize.getWidth();
             const margin = 20; // 20pt margin on each side
             const textWidth = pageWidth - (margin * 2); // Full width minus margins
             
+            // Ensure font is set before splitting (splitTextToSize uses current font settings)
+            doc.setFont('times', 'normal');
+            doc.setFontSize(11);
+            
             // splitTextToSize returns an array of strings that fit within the width
-            const splitText = doc.splitTextToSize(logicStatement, textWidth);
+            // Use the current font size to calculate proper wrapping
+            const splitText = doc.splitTextToSize(logicStatement, textWidth, {
+                fontSize: 11,
+                fontName: 'times',
+                fontStyle: 'normal'
+            });
+            
+            // If splitTextToSize doesn't work with options, try without
+            const lines = Array.isArray(splitText) ? splitText : doc.splitTextToSize(logicStatement, textWidth);
             
             // Render each line individually to ensure proper word wrapping
             const lineHeight = 6; // Line height in points
-            splitText.forEach((line, index) => {
-                doc.text(line, margin, yPos + (index * lineHeight));
+            lines.forEach((line, index) => {
+                // Ensure text doesn't exceed the margin boundaries
+                doc.text(line.trim(), margin, yPos + (index * lineHeight), {
+                    maxWidth: textWidth,
+                    align: 'left'
+                });
             });
-            yPos += splitText.length * lineHeight + 5;
+            yPos += lines.length * lineHeight + 5;
             
             // Section 3: Visual Evidence
             doc.setFontSize(14);
