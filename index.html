@@ -2183,7 +2183,7 @@
                         </div>
                         <div class="verification-row">
                             <span class="verification-label">Paradox Detected:</span>
-                            <span class="verification-value ${data.is_paradox ? 'warning' : ''}">${data.is_paradox ? 'YES' + (data.paradox_type ? ' — ' + data.paradox_type : '') : 'None'}</span>
+                            <span class="verification-value ${data.is_paradox ? 'error' : ''}" style="${data.is_paradox ? 'color: #ff6b6b; font-weight: 600;' : ''}">${data.is_paradox ? 'YES' + (data.paradox_type ? ' — ' + data.paradox_type : ' — Contradiction') : 'None'}</span>
                         </div>
                         <div class="verification-row">
                             <span class="verification-label">Translation Confidence:</span>
