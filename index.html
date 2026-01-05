@@ -2935,9 +2935,19 @@
             const pageWidth = doc.internal.pageSize.getWidth();
             const margin = 20; // 20pt margin on each side
             const textWidth = pageWidth - (margin * 2); // Full width minus margins
+            
+            // splitTextToSize returns an array of strings that fit within the width
             const splitText = doc.splitTextToSize(logicStatement, textWidth);
-            doc.text(splitText, margin, yPos);
-            yPos += splitText.length * 6 + 5;
+            
+            // Ensure we're using the array format correctly
+            if (Array.isArray(splitText)) {
+                doc.text(splitText, margin, yPos, { maxWidth: textWidth });
+                yPos += splitText.length * 6 + 5;
+            } else {
+                // Fallback if splitTextToSize doesn't return an array
+                doc.text(logicStatement, margin, yPos, { maxWidth: textWidth });
+                yPos += 6 + 5;
+            }
             
             // Section 3: Visual Evidence
             doc.setFontSize(14);
