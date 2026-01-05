@@ -1987,7 +1987,14 @@
                         const pattern = /^([^\s∧&→↔()]+)\s*[∧&]\s*¬\s*\1\s*$/;
                         return pattern.test(proposition);
                     })();
-                    const isContradiction = data.smt_status === "unsat" || isSimpleContradiction;
+                    // CRITICAL: For Consistency mode, UNSAT = FAIL (contradiction)
+                    // Check for UNSAT from Z3 solver (contradiction in consistency mode)
+                    const isUnsat = data.smt_status === "unsat" || 
+                                   (data.smt_satisfiable === false && data.smt_status !== "sat" && data.smt_status !== "unknown");
+                    const isContradiction = isUnsat || isSimpleContradiction;
+                    
+                    // For consistency checking: UNSAT = Contradiction = FAIL
+                    // valid must be False AND no paradox AND not UNSAT
                     isLogicallyValid = data.valid && !data.paradox_detected && !isContradiction;
                     
                     // Store verification data for affidavit generation
