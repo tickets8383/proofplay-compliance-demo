@@ -304,6 +304,25 @@
         .result-status.error { color: #ff6b6b; }
         .result-status.warning { color: #ffc857; }
         
+        .legal-seal-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            cursor: help;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        
+        .legal-seal-badge:hover {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+        }
+        
         .result-time {
             font-size: 12px;
             color: #8b9cb3;
@@ -2251,7 +2270,16 @@
                     statusEl.className = 'result-status error';
                 }
 
+                // Check for RFC3161 TSA timestamp token
+                const hasTSAToken = data.tsa_token || (data.anchor_id && data.anchor_id.startsWith('tsa_'));
+                const legalSealBadge = hasTSAToken ? `
+                    <div class="legal-seal-badge" title="Verified by External Time Stamping Authority (RFC 3161)">
+                        ⚖️ Legally Timestamped
+                    </div>
+                ` : '';
+
                 detailsEl.innerHTML = `
+                    ${legalSealBadge}
                     <div class="verification-row">
                         <span class="verification-label">Record ID:</span>
                         <span class="verification-value">${data.record_id || auditId}</span>
