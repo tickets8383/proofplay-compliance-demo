@@ -2414,7 +2414,7 @@
                 const hasTSAToken = data.tsa_token || (data.anchor_id && data.anchor_id.startsWith('tsa_'));
                 const legalSealBadge = hasTSAToken ? `
                     <div class="legal-seal-badge" title="Verified by External Time Stamping Authority (RFC 3161)">
-                        ⚖️ Legally Timestamped
+                        <span class="emoji">⚖️</span> Legally Timestamped
                     </div>
                 ` : '';
 
