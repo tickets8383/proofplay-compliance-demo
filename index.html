@@ -1987,6 +1987,15 @@
                     const isContradiction = data.smt_status === "unsat" || isSimpleContradiction;
                     isLogicallyValid = data.valid && !data.paradox_detected && !isContradiction;
                     
+                    // Store verification data for affidavit generation
+                    currentVerificationData = {
+                        mode: 'formal',
+                        input: input,
+                        data: data,
+                        isLogicallyValid: isLogicallyValid,
+                        timestamp: data.timestamp || new Date().toISOString()
+                    };
+                    
                     // Determine result status
                     if (data.paradox_detected) {
                         statusEl.textContent = '⚠️ PARADOX / CIRCULAR DEPENDENCY';
