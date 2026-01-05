@@ -2000,12 +2000,15 @@
                     };
                     
                     // Determine result status
-                    if (data.paradox_detected) {
-                        statusEl.textContent = '⚠️ PARADOX / CIRCULAR DEPENDENCY';
-                        statusEl.className = 'result-status warning';
-                    } else if (!isLogicallyValid) {
-                        statusEl.textContent = '✗ INVALID / CONTRADICTION';
-                        statusEl.className = 'result-status error';
+                    // CRITICAL: Show RED badge for paradox OR contradiction (UNSAT)
+                    if (data.paradox_detected || !isLogicallyValid) {
+                        if (data.paradox_detected) {
+                            statusEl.textContent = '⚠️ PARADOX / CIRCULAR DEPENDENCY';
+                            statusEl.className = 'result-status warning';
+                        } else {
+                            statusEl.textContent = '✗ INVALID / CONTRADICTION';
+                            statusEl.className = 'result-status error';
+                        }
                     } else {
                         statusEl.textContent = '✓ LOGICALLY VALID';
                         statusEl.className = 'result-status success';
