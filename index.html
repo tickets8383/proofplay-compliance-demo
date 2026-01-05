@@ -675,7 +675,172 @@
         .audit-status-invalid {
             color: #ff6b6b;
         }
+
+        /* Logic Visualization Tab System */
+        .result-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 16px;
+            border-bottom: 2px solid #2d4a6f;
+        }
+
+        .result-tab {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            color: #8b9cb3;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .result-tab:hover {
+            color: #00d4aa;
+        }
+
+        .result-tab.active {
+            color: #00d4aa;
+            border-bottom-color: #00d4aa;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Mermaid Graph Styling */
+        .mermaid-container {
+            background: #0a1628;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-x: auto;
+        }
+
+        .mermaid-container svg {
+            max-width: 100%;
+        }
+
+        /* Mermaid node styling overrides */
+        .mermaid .node rect,
+        .mermaid .node circle,
+        .mermaid .node ellipse,
+        .mermaid .node polygon,
+        .mermaid .node path {
+            fill: #152238 !important;
+            stroke: #00d4aa !important;
+            stroke-width: 2px !important;
+        }
+
+        .mermaid .node.negated rect,
+        .mermaid .node.negated polygon {
+            stroke: #ff6b6b !important;
+            fill: #2a1a1a !important;
+        }
+
+        .mermaid .edgePath .path {
+            stroke: #00d4aa !important;
+            stroke-width: 2px !important;
+        }
+
+        .mermaid .edgeLabel {
+            background-color: #0a1628 !important;
+            color: #ffc857 !important;
+        }
+
+        .mermaid .label {
+            color: #f0f4f8 !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        }
+
+        .mermaid .cluster rect {
+            fill: #1e3a5f !important;
+            stroke: #2d4a6f !important;
+        }
+
+        .graph-legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 12px;
+            font-size: 11px;
+            color: #8b9cb3;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            border: 2px solid;
+        }
+
+        .legend-color.variable {
+            background: #152238;
+            border-color: #00d4aa;
+        }
+
+        .legend-color.operator {
+            background: #152238;
+            border-color: #ffc857;
+        }
+
+        .legend-color.negated {
+            background: #2a1a1a;
+            border-color: #ff6b6b;
+        }
+
+        .no-graph-message {
+            color: #8b9cb3;
+            font-style: italic;
+            text-align: center;
+            padding: 40px;
+        }
     </style>
+    <!-- Mermaid.js for Logic Visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        // Initialize Mermaid with dark theme
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#152238',
+                primaryTextColor: '#f0f4f8',
+                primaryBorderColor: '#00d4aa',
+                lineColor: '#00d4aa',
+                secondaryColor: '#1e3a5f',
+                tertiaryColor: '#0a1628',
+                background: '#0a1628',
+                mainBkg: '#152238',
+                nodeBorder: '#00d4aa',
+                clusterBkg: '#1e3a5f',
+                titleColor: '#f0f4f8',
+                edgeLabelBackground: '#0a1628'
+            },
+            flowchart: {
+                curve: 'basis',
+                padding: 20,
+                nodeSpacing: 50,
+                rankSpacing: 50,
+                htmlLabels: true
+            }
+        });
+    </script>
 </head>
 <body>
     <div class="container">
@@ -787,7 +952,38 @@
                         <span class="result-time" id="logic-time">—</span>
                     </div>
                     <div class="verification-details" id="logic-details"></div>
-                    <div class="result-body" id="logic-body"></div>
+                    
+                    <!-- Tab System -->
+                    <div class="result-tabs" id="result-tabs" style="display: none;">
+                        <button class="result-tab active" onclick="switchTab('graph')" id="tab-graph">🔀 Logic Graph</button>
+                        <button class="result-tab" onclick="switchTab('json')" id="tab-json">📄 JSON Result</button>
+                    </div>
+                    
+                    <!-- Graph Tab Content -->
+                    <div class="tab-content active" id="tab-content-graph">
+                        <div class="mermaid-container" id="mermaid-container">
+                            <div class="no-graph-message">Run verification to see logic visualization</div>
+                        </div>
+                        <div class="graph-legend" id="graph-legend" style="display: none;">
+                            <div class="legend-item">
+                                <div class="legend-color variable"></div>
+                                <span>Variable</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color operator" style="border-color: #ffc857;"></div>
+                                <span>Operator</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color negated"></div>
+                                <span>Negated</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- JSON Tab Content -->
+                    <div class="tab-content" id="tab-content-json">
+                        <div class="result-body" id="logic-body"></div>
+                    </div>
                 </div>
                 
                 <div class="api-info">
@@ -935,7 +1131,7 @@
                 Ready for integration or licensing discussions.
             </div>
             <div class="cta-buttons">
-                <a href="mailto:tickets8383@icloud.com" class="cta-btn primary">Contact for Demo</a>
+                <a href="/cdn-cgi/l/email-protection#26524f454d4352551e151e15664f454a4953420845494b" class="cta-btn primary">Contact for Demo</a>
                 <a href="https://github.com/tickets8383/proofplay-docs" target="_blank" class="cta-btn secondary">API Documentation</a>
             </div>
         </div>
@@ -944,11 +1140,11 @@
             Built on 67,000+ lines of enterprise audit infrastructure.<br>
             <a href="https://rapidapi.com/watkins905/api/gpm-sc-reasoning-verifier/" target="_blank">RapidAPI</a> · 
             <a href="https://github.com/tickets8383/proofplay-docs" target="_blank">Documentation</a> · 
-            <a href="mailto:tickets8383@icloud.com">tickets8383@icloud.com</a>
+            <a href="/cdn-cgi/l/email-protection#75011c161e1001064d464d46351c16191a00115b161a18"><span class="__cf_email__" data-cfemail="a5d1ccc6cec0d1d69d969d96e5ccc6c9cad0c18bc6cac8">[email&#160;protected]</span></a>
         </footer>
     </div>
 
-    <script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
         // VERSION: 2024-12-19-v2 - Fixed audit trail to use GPMSC API only
         // Configuration - override via query param: ?api=https://... or ?gpmsc=https://...&proofplay=https://...
         // CRITICAL: Audit log database is on GPMSC API (gpmsc-api.onrender.com), NOT ProofPlay
@@ -1001,6 +1197,228 @@
         })();
         
         let currentMode = 'formal';
+        
+        // ============================================================
+        // LOGIC VISUALIZATION FUNCTIONS
+        // ============================================================
+        
+        let graphCounter = 0; // For unique mermaid IDs
+        
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.result-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`tab-content-${tabName}`).classList.add('active');
+        }
+        
+        function generateMermaidGraph(logicString) {
+            /**
+             * Parses a formal logic string and generates Mermaid flowchart syntax.
+             * Handles: ∧ (AND), ∨ (OR), → (IMPLIES), ↔ (IFF), ¬ (NOT)
+             */
+            
+            if (!logicString || logicString.trim().length === 0) {
+                return null;
+            }
+            
+            const nodes = [];
+            const edges = [];
+            let nodeId = 0;
+            
+            function getNodeId() {
+                return `N${nodeId++}`;
+            }
+            
+            function sanitizeLabel(label) {
+                // Remove special chars that break mermaid, keep underscores
+                return label.replace(/[<>{}|]/g, '').trim();
+            }
+            
+            function parseExpression(expr) {
+                expr = expr.trim();
+                
+                // Remove outer parentheses if they wrap the entire expression
+                while (expr.startsWith('(') && expr.endsWith(')')) {
+                    let depth = 0;
+                    let balanced = true;
+                    for (let i = 0; i < expr.length - 1; i++) {
+                        if (expr[i] === '(') depth++;
+                        if (expr[i] === ')') depth--;
+                        if (depth === 0 && i > 0) {
+                            balanced = false;
+                            break;
+                        }
+                    }
+                    if (balanced) {
+                        expr = expr.slice(1, -1).trim();
+                    } else {
+                        break;
+                    }
+                }
+                
+                // Find main operator (lowest precedence first: →, ↔, ∨, ∧)
+                const operators = [
+                    { symbols: ['→', '->'], name: 'IMPLIES', label: '→' },
+                    { symbols: ['↔', '<->'], name: 'IFF', label: '↔' },
+                    { symbols: ['∨', '||', ' or '], name: 'OR', label: '∨' },
+                    { symbols: ['∧', '&&', ' and '], name: 'AND', label: '∧' }
+                ];
+                
+                for (const op of operators) {
+                    let depth = 0;
+                    for (let i = 0; i < expr.length; i++) {
+                        if (expr[i] === '(') depth++;
+                        if (expr[i] === ')') depth--;
+                        
+                        if (depth === 0) {
+                            for (const sym of op.symbols) {
+                                if (expr.substring(i, i + sym.length) === sym) {
+                                    const left = expr.substring(0, i).trim();
+                                    const right = expr.substring(i + sym.length).trim();
+                                    
+                                    if (left && right) {
+                                        const nodeIdCurrent = getNodeId();
+                                        const leftResult = parseExpression(left);
+                                        const rightResult = parseExpression(right);
+                                        
+                                        // Determine node shape based on operator
+                                        let nodeShape;
+                                        if (op.name === 'AND') {
+                                            nodeShape = `${nodeIdCurrent}{{"${op.label} AND"}}`;
+                                        } else if (op.name === 'OR') {
+                                            nodeShape = `${nodeIdCurrent}{{"${op.label} OR"}}`;
+                                        } else if (op.name === 'IMPLIES') {
+                                            nodeShape = `${nodeIdCurrent}[/"${op.label} IMPLIES"/]`;
+                                        } else {
+                                            nodeShape = `${nodeIdCurrent}{{"${op.label}"}}`;
+                                        }
+                                        
+                                        nodes.push(nodeShape);
+                                        edges.push(`${leftResult} --> ${nodeIdCurrent}`);
+                                        edges.push(`${rightResult} --> ${nodeIdCurrent}`);
+                                        
+                                        return nodeIdCurrent;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Check for negation
+                if (expr.startsWith('¬') || expr.startsWith('~') || expr.startsWith('!') || expr.toLowerCase().startsWith('not ')) {
+                    const inner = expr.replace(/^(¬|~|!|not\s+)/i, '').trim();
+                    const innerResult = parseExpression(inner);
+                    const nodeIdCurrent = getNodeId();
+                    
+                    nodes.push(`${nodeIdCurrent}[["¬ NOT"]]:::negated`);
+                    edges.push(`${innerResult} --> ${nodeIdCurrent}`);
+                    
+                    return nodeIdCurrent;
+                }
+                
+                // Check for quantifiers (∀, ∃)
+                const quantifierMatch = expr.match(/^([∀∃])\s*(\w+)\s*:\s*(\w+)\s*\.\s*(.+)$/);
+                if (quantifierMatch) {
+                    const [, quantifier, varName, varType, body] = quantifierMatch;
+                    const bodyResult = parseExpression(body);
+                    const nodeIdCurrent = getNodeId();
+                    
+                    const qLabel = quantifier === '∀' ? 'FOR ALL' : 'EXISTS';
+                    nodes.push(`${nodeIdCurrent}[("${quantifier} ${qLabel} ${varName}:${varType}")]`);
+                    edges.push(`${bodyResult} --> ${nodeIdCurrent}`);
+                    
+                    return nodeIdCurrent;
+                }
+                
+                // It's a variable/atom
+                const nodeIdCurrent = getNodeId();
+                const label = sanitizeLabel(expr);
+                nodes.push(`${nodeIdCurrent}["${label}"]`);
+                
+                return nodeIdCurrent;
+            }
+            
+            try {
+                parseExpression(logicString);
+                
+                if (nodes.length === 0) {
+                    return null;
+                }
+                
+                // Build mermaid graph
+                let mermaidCode = 'flowchart BT\n';
+                mermaidCode += '    classDef negated fill:#2a1a1a,stroke:#ff6b6b,stroke-width:2px\n';
+                mermaidCode += '    classDef operator fill:#1e3a5f,stroke:#ffc857,stroke-width:2px\n';
+                
+                nodes.forEach(node => {
+                    mermaidCode += `    ${node}\n`;
+                });
+                
+                edges.forEach(edge => {
+                    mermaidCode += `    ${edge}\n`;
+                });
+                
+                return mermaidCode;
+            } catch (e) {
+                console.error('Error generating graph:', e);
+                return null;
+            }
+        }
+        
+        async function renderLogicGraph(logicString, isValid) {
+            const container = document.getElementById('mermaid-container');
+            const legend = document.getElementById('graph-legend');
+            const tabs = document.getElementById('result-tabs');
+            
+            const mermaidCode = generateMermaidGraph(logicString);
+            
+            if (!mermaidCode) {
+                container.innerHTML = '<div class="no-graph-message">Unable to visualize this expression</div>';
+                legend.style.display = 'none';
+                tabs.style.display = 'flex';
+                return;
+            }
+            
+            try {
+                // Clear previous graph
+                container.innerHTML = '';
+                
+                // Create unique ID for this render
+                graphCounter++;
+                const graphId = `logic-graph-${graphCounter}`;
+                
+                // Render the graph
+                const { svg } = await mermaid.render(graphId, mermaidCode);
+                container.innerHTML = svg;
+                
+                // Show legend and tabs
+                legend.style.display = 'flex';
+                tabs.style.display = 'flex';
+                
+                // Default to graph tab on success
+                if (isValid) {
+                    switchTab('graph');
+                }
+                
+            } catch (e) {
+                console.error('Mermaid render error:', e);
+                container.innerHTML = '<div class="no-graph-message">Error rendering graph. View JSON for details.</div>';
+                legend.style.display = 'none';
+                tabs.style.display = 'flex';
+            }
+        }
+        
+        // ============================================================
+        // END LOGIC VISUALIZATION FUNCTIONS
+        // ============================================================
         
         const formalExamples = {
             coverage: {
@@ -1149,6 +1567,7 @@
 
             try {
                 let response, data;
+                let isLogicallyValid = false; // Declare in outer scope for graph rendering
                 
                 if (currentMode === 'formal') {
                     // Formal mode - use /verify endpoint
@@ -1174,7 +1593,7 @@
                         return pattern.test(proposition);
                     })();
                     const isContradiction = data.smt_status === "unsat" || isSimpleContradiction;
-                    const isLogicallyValid = data.valid && !data.paradox_detected && !isContradiction;
+                    isLogicallyValid = data.valid && !data.paradox_detected && !isContradiction;
                     
                     // Determine result status
                     if (data.paradox_detected) {
@@ -1240,6 +1659,9 @@
                     const elapsed = Date.now() - startTime;
                     timeEl.textContent = `${elapsed}ms`;
 
+                    // Set validity for graph rendering
+                    isLogicallyValid = data.is_logically_valid && !data.is_paradox;
+
                     // Determine result status
                     if (data.is_paradox) {
                         statusEl.textContent = '⚠️ PARADOX / CIRCULAR RULE';
@@ -1300,6 +1722,12 @@
                 }
 
                 bodyEl.textContent = JSON.stringify(data, null, 2);
+
+                // Render logic visualization graph
+                const expressionToVisualize = currentMode === 'formal' 
+                    ? input 
+                    : (data.formal_translation || input);
+                await renderLogicGraph(expressionToVisualize, isLogicallyValid);
 
                 // Auto-fill audit ID if present
                 const auditId = data?.audit_id || data?.proof?.anchor_id;
@@ -1547,15 +1975,4 @@
             document.getElementById('game-id').value = auditId;
             
             // Highlight it
-            const input = document.getElementById('game-id');
-            input.classList.add('audit-highlight');
-            setTimeout(() => {
-                input.classList.remove('audit-highlight');
-            }, 2000);
-            
-            // Automatically verify
-            verifyAuditIntegrity();
-        }
-    </script>
-</body>
-</html>
+            const input = document.getElementById('game-i
