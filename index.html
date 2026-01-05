@@ -1329,9 +1329,20 @@
 
         // VERSION: 2024-12-19-v6 - RENAMED from verifyGame to verifyAuditIntegrity to break cache
         // OLD FUNCTION verifyGame() DELETED - DO NOT USE
+        
+        // Override old verifyGame function if it exists (from cached code)
+        if (typeof verifyGame !== 'undefined') {
+            console.error('❌❌❌ OLD CACHED CODE DETECTED: verifyGame() function exists!');
+            console.error('This means you are running OLD CACHED CODE from Vercel!');
+            window.verifyGame = function() {
+                alert('ERROR: You are running OLD CACHED CODE. Please:\n1. Hard refresh (Ctrl+Shift+R)\n2. Clear browser cache\n3. Try incognito mode');
+                throw new Error('OLD CACHED CODE - verifyGame() should not exist');
+            };
+        }
+        
         async function verifyAuditIntegrity() {
             console.log('=== verifyAuditIntegrity() called - VERSION: 2024-12-19-v6 ===');
-            console.log('⚠️ If you see verifyGame() in console, you are running OLD CACHED CODE');
+            console.log('✅ This is the NEW function - using GPMSC API only');
             const btn = document.getElementById('game-btn');
             const auditId = document.getElementById('game-id').value.trim();
             const resultDiv = document.getElementById('game-result');
