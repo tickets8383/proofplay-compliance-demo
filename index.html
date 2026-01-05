@@ -309,18 +309,27 @@
             align-items: center;
             gap: 6px;
             padding: 8px 14px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #ffffff;
+            border: 1px solid #00d4aa;
             border-radius: 8px;
             font-size: 12px;
             font-weight: 600;
             margin-bottom: 16px;
             cursor: help;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 2px 8px rgba(0, 212, 170, 0.3);
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .legal-seal-badge .emoji {
+            font-size: 16px;
+            filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
+            text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
         }
         
         .legal-seal-badge:hover {
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+            box-shadow: 0 4px 12px rgba(0, 212, 170, 0.5);
+            border-color: #00ffd4;
         }
         
         .result-time {
