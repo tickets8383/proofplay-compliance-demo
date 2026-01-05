@@ -2897,7 +2897,7 @@
             const hasTSAToken = data.tsa_token || (data.anchor_id && data.anchor_id.startsWith('tsa_'));
             if (hasTSAToken) {
                 doc.setTextColor(0, 128, 0);
-                doc.text('Legal Seal: ✓ Verified RFC 3161 Timestamp', 20, yPos);
+                doc.text('Legal Seal: Verified RFC 3161 Timestamp', 20, yPos);
                 doc.setTextColor(0, 0, 0);
                 yPos += 7;
                 
@@ -2931,11 +2931,12 @@
                 logicStatement = `Original: ${logicStatement}\nFormal: ${data.formal_translation}`;
             }
             
-            // Split long text into multiple lines (use 50% of page width to match graph)
+            // Split long text into multiple lines (use full width with margins to match graph)
             const pageWidth = doc.internal.pageSize.getWidth();
-            const textWidth = pageWidth * 0.5; // 50% of page width
+            const margin = 20; // 20pt margin on each side
+            const textWidth = pageWidth - (margin * 2); // Full width minus margins
             const splitText = doc.splitTextToSize(logicStatement, textWidth);
-            doc.text(splitText, 20, yPos);
+            doc.text(splitText, margin, yPos);
             yPos += splitText.length * 6 + 5;
             
             // Section 3: Visual Evidence
@@ -2961,15 +2962,14 @@
                     // Convert to image data
                     const imgData = canvas.toDataURL('image/png');
                     
-                    // Calculate dimensions - use 50% of page width (page width is ~210mm = ~210 points)
-                    // Leave margins: 20pt left, 20pt right = 40pt total, so usable width is 170pt
-                    // 50% of usable width = 85pt, but let's use 50% of full page = 105pt
+                    // Calculate dimensions - use full page width with margins (20pt on each side)
                     const pageWidth = doc.internal.pageSize.getWidth();
-                    const imgWidth = pageWidth * 0.5; // 50% of page width
+                    const margin = 20; // 20pt margin on each side
+                    const imgWidth = pageWidth - (margin * 2); // Full width minus margins
                     const imgHeight = (canvas.height * imgWidth) / canvas.width;
                     
-                    // Center the image horizontally (page width - image width) / 2
-                    const imgX = (pageWidth - imgWidth) / 2;
+                    // Position image at left margin
+                    const imgX = margin;
                     
                     // Check if we need a new page
                     if (yPos + imgHeight > 250) {
@@ -2989,15 +2989,20 @@
                 }
             }
             
-            // Footer
-            if (yPos > 250) {
+            // Footer - ensure it's on the last page and properly centered
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const footerY = pageHeight - 15; // 15pt from bottom
+            
+            // If we're too close to the footer, add a new page
+            if (yPos > footerY - 10) {
                 doc.addPage();
-                yPos = 20;
             }
             
             doc.setFont('times', 'italic');
             doc.setFontSize(9);
-            doc.text('Generated automatically by ProofPlay. This document is a cryptographic record of a machine decision.', 20, 280, { align: 'center' });
+            const footerText = 'Generated automatically by ProofPlay. This document is a cryptographic record of a machine decision.';
+            const centerX = doc.internal.pageSize.getWidth() / 2; // Center of page (105 for A4)
+            doc.text(footerText, centerX, pageHeight - 15, { align: 'center' });
             
             // Generate filename
             const filename = `affidavit-${auditId.substring(0, 8)}-${new Date().toISOString().split('T')[0]}.pdf`;
