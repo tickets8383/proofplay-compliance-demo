@@ -2372,13 +2372,16 @@
                         endpointDisplay = endpointDisplay.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
                     }
                     
+                    // Escape the recordId for use in HTML attribute to prevent XSS and ensure proper passing
+                    const escapedRecordId = recordId.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    
                     return `
                         <tr>
                             <td>${timestamp}</td>
                             <td>${endpointDisplay}</td>
                             <td class="${statusClass}">${statusText}</td>
                             <td>
-                                <span class="audit-id-link" onclick="selectAuditId('${recordId}')">${shortId}</span>
+                                <span class="audit-id-link" onclick="selectAuditId('${escapedRecordId}')" data-audit-id="${escapedRecordId}">${shortId}</span>
                             </td>
                         </tr>
                     `;
@@ -2408,18 +2411,24 @@
         }
 
         function selectAuditId(auditId) {
+            console.log('selectAuditId called with:', auditId);
+            
             // Populate the input field
-            document.getElementById('game-id').value = auditId;
+            const inputField = document.getElementById('game-id');
+            inputField.value = auditId;
+            console.log('Set input field value to:', inputField.value);
             
             // Highlight it
-            const input = document.getElementById('game-id');
-            input.classList.add('audit-highlight');
+            inputField.classList.add('audit-highlight');
             setTimeout(() => {
-                input.classList.remove('audit-highlight');
+                inputField.classList.remove('audit-highlight');
             }, 2000);
             
-            // Automatically verify
-            verifyAuditIntegrity();
+            // Automatically verify (with a small delay to ensure value is set)
+            setTimeout(() => {
+                console.log('Calling verifyAuditIntegrity with value:', document.getElementById('game-id').value);
+                verifyAuditIntegrity();
+            }, 100);
         }
 
         // ============================================================
