@@ -1144,7 +1144,7 @@
         </footer>
     </div>
 
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+    <script>
         // VERSION: 2024-12-19-v2 - Fixed audit trail to use GPMSC API only
         // Configuration - override via query param: ?api=https://... or ?gpmsc=https://...&proofplay=https://...
         // CRITICAL: Audit log database is on GPMSC API (gpmsc-api.onrender.com), NOT ProofPlay
@@ -1538,8 +1538,6 @@
                 statusEl.style.color = '#ff6b6b';
             }
         }
-        checkStatus();
-        loadAuditStream();
 
         async function verifyLogic() {
             const btn = document.getElementById('verify-btn');
@@ -1975,4 +1973,19 @@
             document.getElementById('game-id').value = auditId;
             
             // Highlight it
-            const input = document.getElementById('game-i
+            const input = document.getElementById('game-id');
+            input.classList.add('audit-highlight');
+            setTimeout(() => {
+                input.classList.remove('audit-highlight');
+            }, 2000);
+            
+            // Automatically verify
+            verifyAuditIntegrity();
+        }
+
+        // Initialize on page load (after all functions are defined)
+        checkStatus();
+        loadAuditStream();
+    </script>
+</body>
+</html>
