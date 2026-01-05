@@ -2501,26 +2501,56 @@
                 console.log('Audit stream response status:', response.status);
                 
                 if (!response.ok) {
-                    const errorText = await response.text();
+                    let errorText = '';
+                    try {
+                        errorText = await response.text();
+                    } catch (e) {
+                        errorText = 'Could not read error response';
+                    }
                     console.error('Audit stream error response:', errorText);
+                    console.error('Response status:', response.status);
+                    console.error('Response statusText:', response.statusText);
                     throw new Error(`Failed to load audit stream: ${response.status} ${response.statusText}`);
                 }
                 
-                const data = await response.json();
+                let data;
+                try {
+                    const responseText = await response.text();
+                    console.log('Raw response text:', responseText.substring(0, 500));
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    console.error('Failed to parse JSON response:', e);
+                    throw new Error('Invalid JSON response from server');
+                }
+                
                 console.log('Audit stream data received:', data);
+                console.log('Response structure:', {
+                    hasRecords: 'records' in data,
+                    hasCount: 'count' in data,
+                    recordsType: typeof data.records,
+                    recordsIsArray: Array.isArray(data.records),
+                    recordsLength: data.records ? data.records.length : 'N/A',
+                    fullData: data
+                });
                 
                 const records = data.records || [];
                 
                 console.log('Audit stream records received:', records.length);
                 if (records.length > 0) {
                     console.log('Sample record:', records[0]);
+                    console.log('Sample record keys:', Object.keys(records[0]));
+                } else {
+                    console.warn('⚠️ No records in response. Response data:', JSON.stringify(data, null, 2));
                 }
                 
                 if (records.length === 0) {
                     tbody.innerHTML = `
                         <tr>
                             <td colspan="4" style="text-align: center; color: #8b9cb3; padding: 20px;">
-                                No audit records yet. Run a verification to see records here.
+                                No audit records yet. Run a verification to see records here.<br>
+                                <small style="color: #666; margin-top: 8px; display: block;">
+                                    Tip: Click "Verify Rule Consistency" above to create your first audit record.
+                                </small>
                             </td>
                         </tr>
                     `;
