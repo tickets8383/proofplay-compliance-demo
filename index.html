@@ -2459,55 +2459,6 @@
                     </div>
                 ` : '';
 
-                // Build TSA details section if TSA data is present
-                let tsaDetails = '';
-                if (data.tsa_token || data.tsa_serial) {
-                    const imprintMatches = data.imprint_hash && data.stored_hash && data.imprint_hash === data.stored_hash;
-                    tsaDetails = `
-                        <div class="verification-row" style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #00d4aa; background: rgba(0, 212, 170, 0.05); padding: 12px; border-radius: 6px;">
-                            <span class="verification-label" style="color: #00d4aa; font-weight: 600; margin-bottom: 8px; display: block;">⚖️ RFC 3161 Timestamp Authority Details</span>
-                            ${data.tsa_gen_time ? `
-                            <div class="verification-row" style="margin-top: 8px;">
-                                <span class="verification-label">TSA Generation Time:</span>
-                                <span class="verification-value" style="font-size: 11px;">${new Date(data.tsa_gen_time).toLocaleString()}</span>
-                            </div>
-                            ` : ''}
-                            ${data.tsa_serial ? `
-                            <div class="verification-row">
-                                <span class="verification-label">TSA Serial Number:</span>
-                                <span class="verification-value" style="font-family: monospace; font-size: 11px;">${data.tsa_serial}</span>
-                            </div>
-                            ` : ''}
-                            ${data.tsa_policy_oid ? `
-                            <div class="verification-row">
-                                <span class="verification-label">TSA Policy OID:</span>
-                                <span class="verification-value" style="font-family: monospace; font-size: 11px;">${data.tsa_policy_oid}</span>
-                            </div>
-                            ` : ''}
-                            ${data.imprint_hash ? `
-                            <div class="verification-row">
-                                <span class="verification-label">Imprint Hash (sent to TSA):</span>
-                                <span class="verification-value" style="font-family: monospace; font-size: 10px; word-break: break-all;">${data.imprint_hash.substring(0, 32)}...</span>
-                            </div>
-                            <div class="verification-row">
-                                <span class="verification-label">Record Hash:</span>
-                                <span class="verification-value" style="font-family: monospace; font-size: 10px; word-break: break-all;">${data.stored_hash ? data.stored_hash.substring(0, 32) + '...' : 'N/A'}</span>
-                            </div>
-                            <div class="verification-row">
-                                <span class="verification-label">Hash Match:</span>
-                                <span class="verification-value ${imprintMatches ? 'success' : 'error'}" style="font-weight: 600;">${imprintMatches ? '✓ MATCH' : '✗ MISMATCH'}</span>
-                            </div>
-                            ` : ''}
-                            ${data.tsa_verified !== undefined ? `
-                            <div class="verification-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0, 212, 170, 0.3);">
-                                <span class="verification-label" style="font-weight: 600;">TSA Verified:</span>
-                                <span class="verification-value ${data.tsa_verified ? 'success' : 'error'}" style="font-weight: 600; font-size: 12px;">${data.tsa_verified ? '✓ VERIFIED' : '✗ NOT VERIFIED'}</span>
-                            </div>
-                            ` : ''}
-                        </div>
-                    `;
-                }
-
                 detailsEl.innerHTML = `
                     ${legalSealBadge}
                     <div class="verification-row">
@@ -2540,7 +2491,6 @@
                         <span class="verification-value invalid">${data.error}</span>
                     </div>
                     ` : ''}
-                    ${tsaDetails}
                 `;
 
                 bodyEl.textContent = JSON.stringify(data, null, 2);
@@ -2986,8 +2936,10 @@
                 logicStatement = `Original: ${logicStatement}\nFormal: ${data.formal_translation}`;
             }
             
-            // Split long text into multiple lines
-            const splitText = doc.splitTextToSize(logicStatement, 170);
+            // Split long text into multiple lines (use 50% of page width to match graph)
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const textWidth = pageWidth * 0.5; // 50% of page width
+            const splitText = doc.splitTextToSize(logicStatement, textWidth);
             doc.text(splitText, 20, yPos);
             yPos += splitText.length * 6 + 5;
             
