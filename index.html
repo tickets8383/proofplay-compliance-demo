@@ -2943,76 +2943,65 @@
             doc.setFont('times', 'normal');
             doc.setFontSize(11);
             
-            // Use splitTextToSize with explicit options to handle special characters correctly
-            // The third parameter can be an options object in some jsPDF versions
-            let lines;
-            try {
-                // Try with explicit width calculation
-                lines = doc.splitTextToSize(logicStatement, textWidth);
+            // Manual splitting that preserves Unicode characters correctly
+            // Don't use splitTextToSize as it may corrupt multi-byte Unicode characters (∧, →, etc.)
+            const lines = [];
+            let currentLine = '';
+            
+            // Split by spaces but preserve them, and handle special characters carefully
+            const tokens = logicStatement.split(/(\s+)/);
+            
+            tokens.forEach(token => {
+                if (!token) return; // Skip empty tokens
                 
-                // Verify the split worked and lines fit
-                if (Array.isArray(lines) && lines.length > 0) {
-                    // Double-check each line doesn't exceed width
-                    const verifiedLines = [];
-                    lines.forEach(line => {
-                        const lineWidth = doc.getTextWidth(line);
-                        if (lineWidth > textWidth) {
-                            // This line is too wide, split it further
-                            // Split by spaces first, then by characters if needed
-                            const words = line.split(' ');
-                            let currentLine = '';
-                            words.forEach(word => {
-                                const testLine = currentLine ? currentLine + ' ' + word : word;
-                                const testWidth = doc.getTextWidth(testLine);
-                                if (testWidth <= textWidth) {
-                                    currentLine = testLine;
-                                } else {
-                                    if (currentLine) verifiedLines.push(currentLine);
-                                    // If single word is too long, split by characters
-                                    if (doc.getTextWidth(word) > textWidth) {
-                                        let charLine = '';
-                                        for (let i = 0; i < word.length; i++) {
-                                            const testChar = charLine + word[i];
-                                            if (doc.getTextWidth(testChar) <= textWidth) {
-                                                charLine = testChar;
-                                            } else {
-                                                if (charLine) verifiedLines.push(charLine);
-                                                charLine = word[i];
-                                            }
-                                        }
-                                        if (charLine) currentLine = charLine;
-                                    } else {
-                                        currentLine = word;
-                                    }
-                                }
-                            });
-                            if (currentLine) verifiedLines.push(currentLine);
-                        } else {
-                            verifiedLines.push(line);
-                        }
-                    });
-                    lines = verifiedLines;
+                // Test if adding this token would exceed width
+                const testLine = currentLine + token;
+                const testWidth = doc.getTextWidth(testLine);
+                
+                if (testWidth <= textWidth) {
+                    // Fits, add to current line
+                    currentLine = testLine;
                 } else {
-                    throw new Error('splitTextToSize returned invalid result');
-                }
-            } catch (e) {
-                // Fallback: manual splitting that preserves special characters
-                console.warn('splitTextToSize failed, using manual split:', e);
-                lines = [];
-                let currentLine = '';
-                // Split by spaces but preserve the spaces
-                const parts = logicStatement.split(/(\s+)/);
-                parts.forEach(part => {
-                    const testLine = currentLine + part;
-                    const testWidth = doc.getTextWidth(testLine);
-                    if (testWidth <= textWidth) {
-                        currentLine = testLine;
-                    } else {
-                        if (currentLine.trim()) lines.push(currentLine.trim());
-                        currentLine = part;
+                    // Doesn't fit
+                    if (currentLine.trim()) {
+                        // Save current line
+                        lines.push(currentLine.trim());
+                        currentLine = '';
                     }
-                });
-                if (currentLine.trim()) lines.push(currentLine.trim());
+                    
+                    // Check if token itself is too wide
+                    const tokenWidth = doc.getTextWidth(token);
+                    if (tokenWidth > textWidth) {
+                        // Token is too wide, need to split it character by character
+                        // Use Array.from() to properly handle Unicode surrogate pairs
+                        const chars = Array.from(token); // Properly handles Unicode
+                        let charLine = '';
+                        chars.forEach(char => {
+                            const testChar = charLine + char;
+                            const testCharWidth = doc.getTextWidth(testChar);
+                            if (testCharWidth <= textWidth) {
+                                charLine = testChar;
+                            } else {
+                                if (charLine) {
+                                    lines.push(charLine);
+                                    charLine = char;
+                                } else {
+                                    // Single char is too wide (shouldn't happen), add it anyway
+                                    charLine = char;
+                                }
+                            }
+                        });
+                        currentLine = charLine;
+                    } else {
+                        // Token fits on its own, start new line with it
+                        currentLine = token;
+                    }
+                }
+            });
+            
+            // Add remaining line
+            if (currentLine.trim()) {
+                lines.push(currentLine.trim());
             }
             
             // Render each line individually
