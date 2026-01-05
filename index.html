@@ -2032,10 +2032,11 @@
                         riskClass = 'invalid';
                     }
 
-                    const smtResult = data.smt_result || data.smt_satisfiable;
-                    const smtDisplay = smtResult === true ? 'Satisfiable ✓' : 
-                                       smtResult === false ? 'Unsatisfiable (contradiction)' : 
-                                       'N/A';
+                    // Use smt_status if available (human-readable), otherwise fall back to smt_satisfiable
+                    const smtDisplay = data.smt_status || 
+                                      (data.smt_satisfiable === true ? 'Satisfiable' : 
+                                       data.smt_satisfiable === false ? 'Unsatisfiable' : 
+                                       'N/A');
 
                     // Format timestamp if available
                     const timestamp = data.timestamp || data.proof?.timestamp || new Date().toISOString();
@@ -2052,7 +2053,7 @@
                         </div>
                         <div class="verification-row">
                             <span class="verification-label">Paradox Detected:</span>
-                            <span class="verification-value ${data.paradox_detected ? 'warning' : ''}">${data.paradox_detected ? 'YES — ' + (data.paradox_type || 'Self-reference') : 'None'}</span>
+                            <span class="verification-value ${data.paradox_detected ? 'error' : ''}" style="${data.paradox_detected ? 'color: #ff6b6b; font-weight: 600;' : ''}">${data.paradox_detected ? 'YES — ' + (data.paradox_type || 'Contradiction') : 'None'}</span>
                         </div>
                         <div class="verification-row">
                             <span class="verification-label">SMT Solver (Z3):</span>
