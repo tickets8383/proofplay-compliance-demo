@@ -943,6 +943,7 @@
 
     <script>
         // Configuration - override via query param: ?api=https://... or ?gpmsc=https://...&proofplay=https://...
+        // IMPORTANT: Audit log database is on GPMSC API (gpmsc-api.onrender.com), NOT ProofPlay
         const CONFIG = {
             GPMSC_API_URL: new URLSearchParams(window.location.search).get('gpmsc') 
                 || new URLSearchParams(window.location.search).get('api')
@@ -950,6 +951,10 @@
             PROOFPLAY_API_URL: new URLSearchParams(window.location.search).get('proofplay')
                 || 'https://proofplay-sx3q.onrender.com'
         };
+        
+        // Log configuration on load for debugging
+        console.log('API Configuration:', CONFIG);
+        console.log('Audit log is stored in GPMSC API:', CONFIG.GPMSC_API_URL);
         
         let currentMode = 'formal';
         
@@ -1303,13 +1308,23 @@
             const startTime = Date.now();
 
             try {
+                // CRITICAL: Audit log is stored in GPMSC API database, NOT ProofPlay
                 // Use GPMSC audit integrity endpoint (not ProofPlay games endpoint)
                 const url = `${CONFIG.GPMSC_API_URL}/audit/${auditId}/integrity`;
                 console.log('Verifying audit integrity at:', url); // Debug log
+                
+                // Safety check: ensure we're not accidentally calling ProofPlay
+                if (url.includes('proofplay')) {
+                    throw new Error('ERROR: Attempted to call ProofPlay API. Audit log is in GPMSC API. Please refresh the page.');
+                }
+                
                 const response = await fetch(url);
                 const elapsed = Date.now() - startTime;
                 
                 if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error(`Audit record not found. Make sure you're using an audit_id from a GPMSC /verify response, not from ProofPlay.`);
+                    }
                     throw new Error(`Record not found (${response.status})`);
                 }
 
