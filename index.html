@@ -2895,6 +2895,163 @@
                 console.warn('logic-input element not found');
             }
         }
+        
+        // ============================================================
+        // AFFIDAVIT GENERATION FUNCTION
+        // ============================================================
+        
+        async function generateAffidavit() {
+            if (!currentVerificationData) {
+                alert('No verification data available. Please run a verification first.');
+                return;
+            }
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Set professional serif font
+            doc.setFont('times', 'normal');
+            doc.setFontSize(16);
+            
+            // Header
+            doc.text('OFFICIAL COMPLIANCE AFFIDAVIT', 105, 20, { align: 'center' });
+            doc.setFontSize(12);
+            doc.text('ProofPlay Verification Engine', 105, 28, { align: 'center' });
+            
+            let yPos = 40;
+            
+            // Section 1: Decision Details
+            doc.setFontSize(14);
+            doc.setFont('times', 'bold');
+            doc.text('Decision Details', 20, yPos);
+            yPos += 10;
+            
+            doc.setFont('times', 'normal');
+            doc.setFontSize(11);
+            
+            const data = currentVerificationData.data;
+            const auditId = data.audit_id || data.proof?.anchor_id || data.anchor_id || 'N/A';
+            const timestamp = data.tsa_gen_time || data.timestamp || currentVerificationData.timestamp;
+            const timestampDisplay = new Date(timestamp).toLocaleString();
+            
+            doc.text(`Audit ID: ${auditId}`, 20, yPos);
+            yPos += 7;
+            
+            doc.text(`Timestamp: ${timestampDisplay}`, 20, yPos);
+            yPos += 7;
+            
+            // Status with color coding
+            const status = currentVerificationData.isLogicallyValid ? 'PASS' : 'FAIL';
+            const statusColor = currentVerificationData.isLogicallyValid ? [0, 128, 0] : [255, 0, 0];
+            doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
+            doc.text(`Status: ${status}`, 20, yPos);
+            doc.setTextColor(0, 0, 0); // Reset to black
+            yPos += 7;
+            
+            // Legal Seal if TSA token exists
+            const hasTSAToken = data.tsa_token || (data.anchor_id && data.anchor_id.startsWith('tsa_'));
+            if (hasTSAToken) {
+                doc.setTextColor(0, 128, 0);
+                doc.text('Legal Seal: ✓ Verified RFC 3161 Timestamp', 20, yPos);
+                doc.setTextColor(0, 0, 0);
+                yPos += 7;
+                
+                // Add TSA details if available
+                if (data.tsa_serial) {
+                    doc.setFontSize(10);
+                    doc.text(`TSA Serial: ${data.tsa_serial}`, 25, yPos);
+                    yPos += 6;
+                }
+                if (data.tsa_gen_time) {
+                    doc.text(`TSA Timestamp: ${new Date(data.tsa_gen_time).toLocaleString()}`, 25, yPos);
+                    yPos += 6;
+                }
+                doc.setFontSize(11);
+            }
+            
+            yPos += 5;
+            
+            // Section 2: Logic Definition
+            doc.setFontSize(14);
+            doc.setFont('times', 'bold');
+            doc.text('Logic Definition', 20, yPos);
+            yPos += 10;
+            
+            doc.setFont('times', 'normal');
+            doc.setFontSize(11);
+            
+            // Get the logic statement
+            let logicStatement = currentVerificationData.input;
+            if (currentVerificationData.mode === 'business' && data.formal_translation) {
+                logicStatement = `Original: ${logicStatement}\nFormal: ${data.formal_translation}`;
+            }
+            
+            // Split long text into multiple lines
+            const splitText = doc.splitTextToSize(logicStatement, 170);
+            doc.text(splitText, 20, yPos);
+            yPos += splitText.length * 6 + 5;
+            
+            // Section 3: Visual Evidence
+            doc.setFontSize(14);
+            doc.setFont('times', 'bold');
+            doc.text('Visual Evidence', 20, yPos);
+            yPos += 10;
+            
+            // Capture Mermaid graph
+            const mermaidContainer = document.getElementById('mermaid-container');
+            if (mermaidContainer) {
+                try {
+                    // Wait a bit for any animations to complete
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    // Capture the graph
+                    const canvas = await html2canvas(mermaidContainer, {
+                        backgroundColor: '#0a1628', // Keep dark background for forensic look
+                        scale: 2, // Higher quality
+                        logging: false
+                    });
+                    
+                    // Convert to image data
+                    const imgData = canvas.toDataURL('image/png');
+                    
+                    // Calculate dimensions to fit on page
+                    const imgWidth = 170;
+                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                    
+                    // Check if we need a new page
+                    if (yPos + imgHeight > 250) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    
+                    // Add image to PDF
+                    doc.addImage(imgData, 'PNG', 20, yPos, imgWidth, imgHeight);
+                    yPos += imgHeight + 10;
+                } catch (error) {
+                    console.error('Failed to capture graph:', error);
+                    doc.setFont('times', 'italic');
+                    doc.setFontSize(10);
+                    doc.text('Graph capture unavailable', 20, yPos);
+                    yPos += 7;
+                }
+            }
+            
+            // Footer
+            if (yPos > 250) {
+                doc.addPage();
+                yPos = 20;
+            }
+            
+            doc.setFont('times', 'italic');
+            doc.setFontSize(9);
+            doc.text('Generated automatically by ProofPlay. This document is a cryptographic record of a machine decision.', 20, 280, { align: 'center' });
+            
+            // Generate filename
+            const filename = `affidavit-${auditId.substring(0, 8)}-${new Date().toISOString().split('T')[0]}.pdf`;
+            
+            // Save PDF
+            doc.save(filename);
+        }
     </script>
 </body>
 </html>
