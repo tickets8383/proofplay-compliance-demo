@@ -1509,6 +1509,16 @@
                 return null;
             }
             
+            // 🛡️ SAFETY VALVE: 
+            // If the logic contains Python/Backend operators (~, &, |), it is a Complex Paradox.
+            // Mermaid cannot handle these. Return a safe placeholder graph instead of crashing.
+            if (logicString.includes('~') || logicString.includes('&') || logicString.includes('|')) {
+                return `flowchart TD
+    Status["Complex Logic Detected"] --> Trace["See Logic Trace Below"]
+    style Status fill:#f87171,stroke:#991b1b,color:#fff
+    style Trace fill:#1e293b,stroke:#cbd5e1,color:#fff,stroke-dasharray: 5 5`;
+            }
+            
             // CRITICAL: Normalize text operators to formal symbols before parsing
             // This ensures "(A) AND (B)" from backend formal_translation is parsed correctly
             // Use word boundaries to avoid replacing inside variable names
@@ -2289,8 +2299,20 @@
                 }
                 
                 // Only render graph if we have a structured expression (not pure unstructured text)
-                // If formal_translation exists, it means backend successfully parsed it into structure
-                if (expressionToVisualize && expressionToVisualize.trim()) {
+                // CRITICAL: Never render Mermaid for paradoxes - they contain Python operators (~, &, |) that crash Mermaid
+                // Layer 1: UI Guard - Skip rendering entirely for paradoxes
+                if (data.is_paradox || isContradictionNatural) {
+                    const container = document.getElementById('mermaid-container');
+                    const tabs = document.getElementById('result-tabs');
+                    if (container) {
+                        container.innerHTML = '<div class="no-graph-message">Complex paradox detected. See Logic Trace below for detailed analysis.</div>';
+                    }
+                    if (tabs) {
+                        tabs.style.display = 'flex';
+                    }
+                } else if (expressionToVisualize && expressionToVisualize.trim()) {
+                    // If formal_translation exists, it means backend successfully parsed it into structure
+                    // Layer 2: Safety Valve in generateMermaidGraph will catch any remaining dangerous characters
                     await renderLogicGraph(expressionToVisualize, isLogicallyValid);
                 } else {
                     // No structured expression available - hide graph
