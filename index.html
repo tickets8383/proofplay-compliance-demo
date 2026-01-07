@@ -1504,23 +1504,42 @@
              * Parses a formal logic string and generates Mermaid flowchart syntax.
              * Handles: ∧ (AND), ∨ (OR), → (IMPLIES), ↔ (IFF), ¬ (NOT)
              * Also handles: AND, OR, NOT, IMPLIES, IFF (text versions from backend)
+             * Also handles: ~ (NOT), & (AND), | (OR) - Python-style operators from backend
              */
             
             if (!logicString || logicString.trim().length === 0) {
                 return null;
             }
+
+            // --- THE FIX: Convert Python Logic (Backend) to Mermaid Logic (Frontend) ---
+            // The backend sends: (~A | B) & C
+            // Mermaid needs:     (NOT A OR B) AND C
             
-            // CRITICAL: Normalize text operators to formal symbols before parsing
-            // Also handle Python-style operators (~, &, |) by converting to readable text
-            // Convert Python operators to text equivalents for Mermaid compatibility
             let normalized = logicString
+                // 1. Replace Tildes (~) with "NOT "
+                // Note: We use a lookahead to ensure we don't break variable names, 
+                // though usually ~ is a prefix operator.
                 .replace(/~/g, 'NOT ')
+                
+                // 2. Replace Ampersands (&) with "AND"
+                // logicString might have HTML entities like &amp; so handle that first if needed,
+                // but usually raw JSON has literal &.
                 .replace(/&/g, ' AND ')
-                .replace(/\|/g, ' OR ');
+                
+                // 3. Replace Pipes (|) with "OR"
+                .replace(/\|/g, ' OR ')
+                
+                // 4. Replace Python Implication (>>) with "IMPLIES"
+                .replace(/>>/g, ' IMPLIES ')
+
+                // 5. Cleanup extra spaces created by replacements
+                .replace(/\s+/g, ' ').trim();
             
+            // -----------------------------------------------------------------------
+
+            // Now proceed with your existing normalization for text words
             // This ensures "(A) AND (B)" from backend formal_translation is parsed correctly
             // Use word boundaries to avoid replacing inside variable names
-            // (normalized already has Python operators converted above)
             normalized = normalized.replace(/\bAND\b/gi, '∧');
             normalized = normalized.replace(/\bOR\b/gi, '∨');
             normalized = normalized.replace(/\bNOT\b/gi, '¬');
