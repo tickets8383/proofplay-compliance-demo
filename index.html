@@ -1517,10 +1517,9 @@
                 .replace(/&/g, ' AND ')
                 .replace(/\|/g, ' OR ');
             
-            // CRITICAL: Normalize text operators to formal symbols before parsing
             // This ensures "(A) AND (B)" from backend formal_translation is parsed correctly
             // Use word boundaries to avoid replacing inside variable names
-            let normalized = logicString;
+            // (normalized already has Python operators converted above)
             normalized = normalized.replace(/\bAND\b/gi, '∧');
             normalized = normalized.replace(/\bOR\b/gi, '∨');
             normalized = normalized.replace(/\bNOT\b/gi, '¬');
