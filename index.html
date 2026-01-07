@@ -1400,7 +1400,8 @@
             
             // Allowed character set: letters, numbers, underscore, whitespace, operators, parentheses, quantifiers, type annotations
             // Includes: ∀ (forall), ∃ (exists), : (type annotation), . (quantifier dot), and other FAL operators
-            const allowedChars = /^[a-zA-Z0-9_\s()¬∧∨→↔∀∃:.,·\-\|<>=\[\]{}@]+$/;
+            // Also includes Python-style operators: ~ (NOT), & (AND), | (OR)
+            const allowedChars = /^[a-zA-Z0-9_\s()¬∧∨→↔∀∃:.,·\-\|<>=\[\]{}@~&]+$/;
             if (!allowedChars.test(expr)) {
                 result.ok = false;
                 const invalidChars = expr.split('').filter(c => !allowedChars.test(c));
