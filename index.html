@@ -2028,6 +2028,7 @@ ${formattedLogic}
             try {
                 let response, data;
                 let isLogicallyValid = false; // Declare in outer scope for graph rendering
+                let isContradictionNatural = false; // Declare in outer scope for paradox detection
                 
                 if (currentMode === 'formal') {
                     // Formal mode - use /verify endpoint
