@@ -1398,8 +1398,9 @@
                 result.errors.push(`Expression too long (${expr.length} chars, max ${MAX_EXPR_LEN})`);
             }
             
-            // Allowed character set: letters, numbers, underscore, whitespace, operators, parentheses
-            const allowedChars = /^[a-zA-Z0-9_\s()¬∧∨→↔,.\-]+$/;
+            // Allowed character set: letters, numbers, underscore, whitespace, operators, parentheses, quantifiers, type annotations
+            // Includes: ∀ (forall), ∃ (exists), : (type annotation), . (quantifier dot), and other FAL operators
+            const allowedChars = /^[a-zA-Z0-9_\s()¬∧∨→↔∀∃:.,·\-\|<>=\[\]{}@]+$/;
             if (!allowedChars.test(expr)) {
                 result.ok = false;
                 const invalidChars = expr.split('').filter(c => !allowedChars.test(c));
