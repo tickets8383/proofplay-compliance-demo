@@ -1509,15 +1509,13 @@
                 return null;
             }
             
-            // 🛡️ SAFETY VALVE: 
-            // If the logic contains Python/Backend operators (~, &, |), it is a Complex Paradox.
-            // Mermaid cannot handle these. Return a safe placeholder graph instead of crashing.
-            if (logicString.includes('~') || logicString.includes('&') || logicString.includes('|')) {
-                return `flowchart TD
-    Status["Complex Logic Detected"] --> Trace["See Logic Trace Below"]
-    style Status fill:#f87171,stroke:#991b1b,color:#fff
-    style Trace fill:#1e293b,stroke:#cbd5e1,color:#fff,stroke-dasharray: 5 5`;
-            }
+            // CRITICAL: Normalize text operators to formal symbols before parsing
+            // Also handle Python-style operators (~, &, |) by converting to readable text
+            // Convert Python operators to text equivalents for Mermaid compatibility
+            let normalized = logicString
+                .replace(/~/g, 'NOT ')
+                .replace(/&/g, ' AND ')
+                .replace(/\|/g, ' OR ');
             
             // CRITICAL: Normalize text operators to formal symbols before parsing
             // This ensures "(A) AND (B)" from backend formal_translation is parsed correctly
