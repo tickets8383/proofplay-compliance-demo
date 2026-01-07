@@ -2331,49 +2331,45 @@ ${formattedLogic}
                 bodyEl.textContent = JSON.stringify(data, null, 2);
 
                 // Render logic visualization graph
-                // CRITICAL: Always prefer structured formal_translation if available (from backend parsing)
-                // This ensures structured logic like "(A) AND (B)" renders as a tree, not a single node
-                let expressionToVisualize;
+                let expressionToVisualize = null; // Default to nothing
+
                 if (currentMode === 'formal') {
-                    // Formal mode: use input directly (already in formal syntax)
+                    // Formal mode: Always visualize the input
                     expressionToVisualize = input;
                 } else {
-                    // Business mode: prefer formal_translation (backend-parsed structured format)
-                    // Only fall back to input if no formal_translation exists (unstructured text)
-                    expressionToVisualize = data.formal_translation || input;
+                    // Business mode: ONLY visualize if we have a clean translation
+                    // NEVER visualize the raw input (it's a paragraph, not logic)
+                    if (data.formal_translation && !data.formal_translation.includes('error')) {
+                        expressionToVisualize = data.formal_translation;
+                    }
                 }
                 
-                // Only render graph if we have a structured expression (not pure unstructured text)
-                // CRITICAL: Never render Mermaid for paradoxes - they contain Python operators (~, &, |) that crash Mermaid
                 // Layer 1: UI Guard - Skip rendering entirely for paradoxes
                 if (data.is_paradox || isContradictionNatural) {
                     const container = document.getElementById('mermaid-container');
                     const tabs = document.getElementById('result-tabs');
                     if (container) {
-                        // Display Logic Trace directly in the Mermaid container (where graph would be)
+                        // Display Logic Trace directly in the Mermaid container
                         if (data.formal_translation) {
                             displayLogicTrace(container, data.formal_translation, data.paradox_type);
                         } else {
-                            container.innerHTML = '<div class="no-graph-message">Complex paradox detected. No formal translation available.</div>';
+                            container.innerHTML = '<div class="no-graph-message">Paradox detected.</div>';
                         }
                     }
-                    if (tabs) {
-                        tabs.style.display = 'flex';
-                    }
-                } else if (expressionToVisualize && expressionToVisualize.trim()) {
-                    // If formal_translation exists, it means backend successfully parsed it into structure
-                    // Layer 2: Safety Valve in generateMermaidGraph will catch any remaining dangerous characters
+                    if (tabs) tabs.style.display = 'flex';
+                } 
+                // Layer 2: Valid Rules - Only render if we have a safe expression
+                else if (expressionToVisualize && expressionToVisualize.trim()) {
                     await renderLogicGraph(expressionToVisualize, isLogicallyValid);
-                } else {
-                    // No structured expression available - hide graph
+                } 
+                else {
+                    // No graph available (e.g., fallback to regex happened)
                     const container = document.getElementById('mermaid-container');
                     const tabs = document.getElementById('result-tabs');
                     if (container) {
-                        container.innerHTML = '<div class="no-graph-message">No structured logic to visualize. Backend could not parse input into formal logic.</div>';
+                        container.innerHTML = '<div class="no-graph-message">Visualization unavailable for this result.</div>';
                     }
-                    if (tabs) {
-                        tabs.style.display = 'flex';
-                    }
+                    if (tabs) tabs.style.display = 'flex';
                 }
 
                 // Auto-fill audit ID if present (check multiple locations)
