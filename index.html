@@ -1738,6 +1738,38 @@
             }
         }
         
+        function displayLogicTrace(formalTranslation, paradoxType) {
+            /**
+             * Display Logic Trace for paradoxes in terminal-style code block
+             * Formats Python-style operators for readability
+             */
+            const detailsEl = document.getElementById('logic-details');
+            if (!detailsEl || !formalTranslation) return;
+            
+            // Format the logic string for readability
+            let formattedLogic = formalTranslation
+                .replace(/~/g, 'NOT ')
+                .replace(/&/g, ' AND\n')  // Add newlines for readability
+                .replace(/\|/g, ' OR ')
+                .replace(/>>/g, ' IMPLIES ');
+            
+            // Create Logic Trace section
+            const logicTraceHTML = `
+                <div style="margin-top: 1.5rem; padding: 1rem; background: #0f172a; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3); font-family: monospace; font-size: 0.875rem; overflow-x: auto;">
+                    <div style="color: #f87171; font-weight: bold; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span>❌ PARADOX DETECTED</span>
+                        ${paradoxType ? `<span style="color: #fca5a5; font-size: 0.75rem; font-weight: normal;">(${paradoxType})</span>` : ''}
+                    </div>
+                    <div style="color: #cbd5e1; white-space: pre-wrap; word-break: break-all; line-height: 1.6;">
+                        ${formattedLogic}
+                    </div>
+                </div>
+            `;
+            
+            // Append Logic Trace to details section
+            detailsEl.insertAdjacentHTML('beforeend', logicTraceHTML);
+        }
+        
         // Debounced version for real-time rendering (if needed in future)
         function renderLogicGraphDebounced(logicString, isValid) {
             if (renderDebounceTimer) {
@@ -2309,6 +2341,11 @@
                     }
                     if (tabs) {
                         tabs.style.display = 'flex';
+                    }
+                    
+                    // Display Logic Trace for paradoxes (terminal-style code block)
+                    if (data.formal_translation) {
+                        displayLogicTrace(data.formal_translation, data.paradox_type);
                     }
                 } else if (expressionToVisualize && expressionToVisualize.trim()) {
                     // If formal_translation exists, it means backend successfully parsed it into structure
