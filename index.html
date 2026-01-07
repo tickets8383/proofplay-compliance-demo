@@ -1738,36 +1738,48 @@
             }
         }
         
-        function displayLogicTrace(formalTranslation, paradoxType) {
+        function displayLogicTrace(container, formalTranslation, paradoxType) {
             /**
              * Display Logic Trace for paradoxes in terminal-style code block
              * Formats Python-style operators for readability
+             * 
+             * @param {HTMLElement} container - Container element to display Logic Trace in
+             * @param {string} formalTranslation - The formal logic translation string
+             * @param {string} paradoxType - Type of paradox (optional)
              */
-            const detailsEl = document.getElementById('logic-details');
-            if (!detailsEl || !formalTranslation) return;
+            if (!container || !formalTranslation) return;
+            
+            // Escape HTML to prevent XSS and ensure proper display
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
             
             // Format the logic string for readability
-            let formattedLogic = formalTranslation
+            // First escape, then format operators
+            let formattedLogic = escapeHtml(formalTranslation)
                 .replace(/~/g, 'NOT ')
-                .replace(/&/g, ' AND\n')  // Add newlines for readability
+                .replace(/&amp;/g, ' AND\n')  // Handle HTML-escaped & as &amp;
+                .replace(/&/g, ' AND\n')      // Also handle unescaped &
                 .replace(/\|/g, ' OR ')
+                .replace(/&gt;&gt;/g, ' IMPLIES ')  // Handle HTML-escaped >>
                 .replace(/>>/g, ' IMPLIES ');
             
-            // Create Logic Trace section
-            const logicTraceHTML = `
-                <div style="margin-top: 1.5rem; padding: 1rem; background: #0f172a; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3); font-family: monospace; font-size: 0.875rem; overflow-x: auto;">
-                    <div style="color: #f87171; font-weight: bold; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+            // Create Logic Trace section with proper HTML structure
+            const paradoxTypeDisplay = paradoxType ? `<span style="color: #fca5a5; font-size: 0.75rem; font-weight: normal;">(${escapeHtml(paradoxType)})</span>` : '';
+            
+            container.innerHTML = `
+                <div style="padding: 1rem; background: #0f172a; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3); font-family: 'Courier New', monospace; font-size: 0.875rem; overflow-x: auto;">
+                    <div style="color: #f87171; font-weight: bold; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem;">
                         <span>❌ PARADOX DETECTED</span>
-                        ${paradoxType ? `<span style="color: #fca5a5; font-size: 0.75rem; font-weight: normal;">(${paradoxType})</span>` : ''}
+                        ${paradoxTypeDisplay}
                     </div>
-                    <div style="color: #cbd5e1; white-space: pre-wrap; word-break: break-all; line-height: 1.6;">
-                        ${formattedLogic}
+                    <div style="color: #cbd5e1; white-space: pre-wrap; word-break: break-word; line-height: 1.8; font-size: 0.8125rem;">
+${formattedLogic}
                     </div>
                 </div>
             `;
-            
-            // Append Logic Trace to details section
-            detailsEl.insertAdjacentHTML('beforeend', logicTraceHTML);
         }
         
         // Debounced version for real-time rendering (if needed in future)
@@ -2337,15 +2349,15 @@
                     const container = document.getElementById('mermaid-container');
                     const tabs = document.getElementById('result-tabs');
                     if (container) {
-                        container.innerHTML = '<div class="no-graph-message">Complex paradox detected. See Logic Trace below for detailed analysis.</div>';
+                        // Display Logic Trace directly in the Mermaid container (where graph would be)
+                        if (data.formal_translation) {
+                            displayLogicTrace(container, data.formal_translation, data.paradox_type);
+                        } else {
+                            container.innerHTML = '<div class="no-graph-message">Complex paradox detected. No formal translation available.</div>';
+                        }
                     }
                     if (tabs) {
                         tabs.style.display = 'flex';
-                    }
-                    
-                    // Display Logic Trace for paradoxes (terminal-style code block)
-                    if (data.formal_translation) {
-                        displayLogicTrace(data.formal_translation, data.paradox_type);
                     }
                 } else if (expressionToVisualize && expressionToVisualize.trim()) {
                     // If formal_translation exists, it means backend successfully parsed it into structure
