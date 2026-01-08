@@ -904,7 +904,7 @@
                     <div class="stat-label">Lines of Code</div>
                 </div>
                 <div class="stat">
-                    <div class="stat-value">19</div>
+                    <div class="stat-value">22</div>
                     <div class="stat-label">API Endpoints</div>
                 </div>
                 <div class="stat">
@@ -1390,21 +1390,37 @@
                 return result;
             }
             
-            result.stats.len = expr.length;
+            // Decode HTML entities that might come from backend
+            let decoded = expr
+                .replace(/&amp;/g, '&')
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&#(\d+);/g, (m, code) => String.fromCharCode(code));
+            
+            // Normalize Python-style operators to Unicode for validation
+            // This ensures ~, &, | are accepted since they'll be converted anyway
+            let normalized = decoded
+                .replace(/~/g, '¬')
+                .replace(/&/g, '∧')
+                .replace(/\|/g, '∨')
+                .replace(/>>/g, '→');
+            
+            result.stats.len = normalized.length;
             
             // Check length
-            if (expr.length > MAX_EXPR_LEN) {
+            if (normalized.length > MAX_EXPR_LEN) {
                 result.ok = false;
-                result.errors.push(`Expression too long (${expr.length} chars, max ${MAX_EXPR_LEN})`);
+                result.errors.push(`Expression too long (${normalized.length} chars, max ${MAX_EXPR_LEN})`);
             }
             
             // Allowed character set: letters, numbers, underscore, whitespace, operators, parentheses, quantifiers, type annotations
             // Includes: ∀ (forall), ∃ (exists), : (type annotation), . (quantifier dot), and other FAL operators
-            // Also includes Python-style operators: ~ (NOT), & (AND), | (OR)
-            const allowedChars = /^[a-zA-Z0-9_\s()¬∧∨→↔∀∃:.,·\-\|<>=\[\]{}@~&]+$/;
-            if (!allowedChars.test(expr)) {
+            // After normalization, Python-style operators (~, &, |) have been converted to Unicode
+            const allowedChars = /^[a-zA-Z0-9_\s()¬∧∨→↔∀∃:.,·\-<>=\[\]{}@]+$/;
+            const singleCharAllowed = /[a-zA-Z0-9_\s()¬∧∨→↔∀∃:.,·\-<>=\[\]{}@]/;
+            if (!allowedChars.test(normalized)) {
                 result.ok = false;
-                const invalidChars = expr.split('').filter(c => !allowedChars.test(c));
+                const invalidChars = normalized.split('').filter(c => !singleCharAllowed.test(c));
                 const uniqueInvalid = [...new Set(invalidChars)];
                 result.errors.push(`Unsupported characters: ${uniqueInvalid.join(', ')}`);
             }
@@ -1414,11 +1430,11 @@
             let maxDepth = 0;
             let parenMismatch = false;
             
-            for (let i = 0; i < expr.length; i++) {
-                if (expr[i] === '(') {
+            for (let i = 0; i < normalized.length; i++) {
+                if (normalized[i] === '(') {
                     depth++;
                     maxDepth = Math.max(maxDepth, depth);
-                } else if (expr[i] === ')') {
+                } else if (normalized[i] === ')') {
                     depth--;
                     if (depth < 0) {
                         parenMismatch = true;
@@ -1446,7 +1462,7 @@
             }
             
             // Estimate token count (rough: split by operators and whitespace)
-            const tokens = expr.split(/[\s¬∧∨→↔()]+/).filter(t => t.length > 0);
+            const tokens = normalized.split(/[\s¬∧∨→↔()]+/).filter(t => t.length > 0);
             result.stats.tokens = tokens.length;
             
             if (tokens.length > MAX_TOKENS_FOR_DIAGRAM) {
