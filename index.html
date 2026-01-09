@@ -1469,9 +1469,23 @@
                 return { normalized: '', changed: false, warnings: [] };
             }
             
-            let normalized = raw;
+            // Normalize curly quotes to straight quotes
+            function normalize_quotes(text) {
+                return text
+                    .replace(/'/g, "'")  // U+2018 LEFT SINGLE QUOTATION MARK -> U+0027 APOSTROPHE
+                    .replace(/'/g, "'")  // U+2019 RIGHT SINGLE QUOTATION MARK -> U+0027 APOSTROPHE
+                    .replace(/"/g, '"')  // U+201C LEFT DOUBLE QUOTATION MARK -> U+0022 QUOTATION MARK
+                    .replace(/"/g, '"'); // U+201D RIGHT DOUBLE QUOTATION MARK -> U+0022 QUOTATION MARK
+            }
+            
+            let normalized = normalize_quotes(raw);
             const warnings = [];
             let changed = false;
+            
+            // Track if quotes were normalized
+            if (normalized !== raw) {
+                changed = true;
+            }
             
             // Protect variable tokens like V(x) from replacement
             const varPattern = /V\([^)]+\)/g;
@@ -1559,9 +1573,21 @@
                 .replace(/&gt;/g, '>')
                 .replace(/&#(\d+);/g, (m, code) => String.fromCharCode(code));
             
+            // Normalize curly quotes to straight quotes BEFORE validation
+            function normalize_quotes(text) {
+                return text
+                    .replace(/'/g, "'")  // U+2018 LEFT SINGLE QUOTATION MARK -> U+0027 APOSTROPHE
+                    .replace(/'/g, "'")  // U+2019 RIGHT SINGLE QUOTATION MARK -> U+0027 APOSTROPHE
+                    .replace(/"/g, '"')  // U+201C LEFT DOUBLE QUOTATION MARK -> U+0022 QUOTATION MARK
+                    .replace(/"/g, '"'); // U+201D RIGHT DOUBLE QUOTATION MARK -> U+0022 QUOTATION MARK
+            }
+            
+            // Normalize quotes first
+            let quoteNormalized = normalize_quotes(decoded);
+            
             // Normalize Python-style operators to Unicode for validation
             // This ensures ~, &, | are accepted since they'll be converted anyway
-            let normalized = decoded
+            let normalized = quoteNormalized
                 .replace(/~/g, '¬')
                 .replace(/&/g, '∧')
                 .replace(/\|/g, '∨')
@@ -1578,8 +1604,9 @@
             // Allowed character set: letters, numbers, underscore, whitespace, operators, parentheses, quantifiers, type annotations
             // Includes: ∀ (forall), ∃ (exists), : (type annotation), . (quantifier dot), and other FAL operators
             // After normalization, Python-style operators (~, &, |) have been converted to Unicode
-            const allowedChars = /^[a-zA-Z0-9_\s()¬∧∨→↔∀∃:.,·\-<>=\[\]{}@]+$/;
-            const singleCharAllowed = /[a-zA-Z0-9_\s()¬∧∨→↔∀∃:.,·\-<>=\[\]{}@]/;
+            // Includes apostrophe (U+0027) and quotes (U+0022) for natural language statements
+            const allowedChars = /^[a-zA-Z0-9_\s()¬∧∨→↔∀∃:.,·\-<>=\[\]{}@'""]+$/;
+            const singleCharAllowed = /[a-zA-Z0-9_\s()¬∧∨→↔∀∃:.,·\-<>=\[\]{}@'""]/;
             if (!allowedChars.test(normalized)) {
                 result.ok = false;
                 const invalidChars = normalized.split('').filter(c => !singleCharAllowed.test(c));
