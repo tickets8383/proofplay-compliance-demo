@@ -843,6 +843,168 @@
             text-align: center;
             padding: 40px;
         }
+        
+        /* Disambiguation Panel */
+        .disambiguation-panel {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid #ffc857;
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 20px;
+        }
+        
+        .disambiguation-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .disambiguation-header h3 {
+            color: #ffc857;
+            margin: 0;
+            font-size: 1.2rem;
+        }
+        
+        .warning-icon {
+            font-size: 28px;
+        }
+        
+        .ambiguity-reason {
+            color: #a0aec0;
+            font-style: italic;
+            margin-bottom: 12px;
+            padding: 12px;
+            background: rgba(255, 200, 87, 0.1);
+            border-radius: 8px;
+            border-left: 3px solid #ffc857;
+        }
+        
+        .disambiguation-instruction {
+            color: #e0e0e0;
+            margin-bottom: 16px;
+            font-weight: 500;
+        }
+        
+        .candidates-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .candidate-card {
+            background: rgba(0, 212, 170, 0.05);
+            border: 2px solid rgba(0, 212, 170, 0.2);
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            overflow: hidden;
+        }
+        
+        .candidate-card:hover {
+            border-color: rgba(0, 212, 170, 0.5);
+            background: rgba(0, 212, 170, 0.1);
+        }
+        
+        .candidate-card.selected {
+            border-color: #00d4aa;
+            background: rgba(0, 212, 170, 0.15);
+            box-shadow: 0 0 20px rgba(0, 212, 170, 0.2);
+        }
+        
+        .candidate-label {
+            display: flex;
+            cursor: pointer;
+            padding: 16px;
+            width: 100%;
+        }
+        
+        .candidate-radio {
+            display: none;
+        }
+        
+        .candidate-content {
+            display: flex;
+            gap: 16px;
+            width: 100%;
+            align-items: flex-start;
+        }
+        
+        .candidate-number {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #00d4aa, #00b894);
+            color: #0a1628;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        
+        .candidate-details {
+            flex: 1;
+        }
+        
+        .candidate-explanation {
+            color: #e0e0e0;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        
+        .candidate-formal {
+            display: block;
+            color: #00d4aa;
+            font-size: 0.85rem;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            word-break: break-all;
+        }
+        
+        .disambiguation-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .confirm-btn {
+            background: linear-gradient(135deg, #00d4aa, #00b894);
+            color: #0a1628;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .confirm-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 212, 170, 0.4);
+        }
+        
+        .confirm-btn:disabled {
+            background: #4a5568;
+            color: #718096;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .disambiguation-note {
+            color: #718096;
+            font-size: 0.85rem;
+            margin: 0;
+        }
     </style>
     <!-- Mermaid.js for Logic Visualization -->
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
@@ -2212,6 +2374,14 @@ ${formattedLogic}
                     });
                     data = await response.json();
                     
+                    // Check if disambiguation needed
+                    if (data.needs_disambiguation && data.candidates && data.disambiguation_token) {
+                        displayDisambiguationUI(data, input);
+                        btn.disabled = false;
+                        btn.innerHTML = 'Verify Rule Consistency';
+                        return;
+                    }
+                    
                     // Store verification data for affidavit generation
                     currentVerificationData = {
                         mode: 'business',
@@ -3251,6 +3421,264 @@ ${formattedLogic}
             
             // Save PDF
             doc.save(filename);
+        }
+        
+        // Disambiguation UI Functions
+        let pendingDisambiguation = null;  // Stores {token, statement, candidates}
+        
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function displayDisambiguationUI(data, statement) {
+            const resultDiv = document.getElementById('logic-result');
+            const detailsEl = document.getElementById('logic-details');
+            const statusEl = document.getElementById('logic-status');
+            const timeEl = document.getElementById('logic-time');
+            
+            if (!resultDiv || !detailsEl) {
+                console.error('Missing result elements for disambiguation');
+                return;
+            }
+            
+            // Store for later use
+            pendingDisambiguation = {
+                token: data.disambiguation_token,
+                statement: statement,
+                candidates: data.candidates
+            };
+            
+            // Update status
+            statusEl.textContent = '⚠️ MULTIPLE INTERPRETATIONS';
+            statusEl.className = 'result-status warning';
+            timeEl.textContent = `${data.processing_time_ms || 0}ms`;
+            
+            // Build candidates HTML
+            let candidatesHtml = '';
+            data.candidates.forEach((candidate, index) => {
+                candidatesHtml += `
+                    <div class="candidate-card" data-index="${index}">
+                        <label class="candidate-label">
+                            <input type="radio" name="candidate" value="${index}" class="candidate-radio">
+                            <div class="candidate-content">
+                                <div class="candidate-number">${index + 1}</div>
+                                <div class="candidate-details">
+                                    <div class="candidate-explanation">${escapeHtml(candidate.explanation)}</div>
+                                    <code class="candidate-formal">${escapeHtml(candidate.formal)}</code>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                `;
+            });
+            
+            detailsEl.innerHTML = `
+                <div class="disambiguation-panel">
+                    <div class="disambiguation-header">
+                        <span class="warning-icon">⚠️</span>
+                        <h3>Multiple Interpretations Detected</h3>
+                    </div>
+                    <p class="ambiguity-reason">${escapeHtml(data.ambiguity_reason || 'This statement can be interpreted in different ways.')}</p>
+                    <p class="disambiguation-instruction">Select the interpretation that matches your intent:</p>
+                    
+                    <div class="candidates-list">
+                        ${candidatesHtml}
+                    </div>
+                    
+                    <div class="disambiguation-actions">
+                        <button class="confirm-btn" onclick="confirmCandidateSelection()" disabled>
+                            ✓ Use Selected Interpretation
+                        </button>
+                        <p class="disambiguation-note">You can re-run with a different interpretation if needed.</p>
+                    </div>
+                </div>
+            `;
+            
+            // Enable confirm button when a candidate is selected
+            document.querySelectorAll('.candidate-radio').forEach(radio => {
+                radio.addEventListener('change', () => {
+                    document.querySelector('.confirm-btn').disabled = false;
+                    
+                    // Highlight selected card
+                    document.querySelectorAll('.candidate-card').forEach(card => {
+                        card.classList.remove('selected');
+                    });
+                    radio.closest('.candidate-card').classList.add('selected');
+                });
+            });
+        }
+        
+        async function confirmCandidateSelection() {
+            if (!pendingDisambiguation) {
+                console.error('No pending disambiguation');
+                alert('No disambiguation session found. Please try again.');
+                return;
+            }
+            
+            const selectedRadio = document.querySelector('.candidate-radio:checked');
+            if (!selectedRadio) {
+                alert('Please select an interpretation first.');
+                return;
+            }
+            
+            const selectedIndex = parseInt(selectedRadio.value);
+            const confirmBtn = document.querySelector('.confirm-btn');
+            const resultDiv = document.getElementById('logic-result');
+            const detailsEl = document.getElementById('logic-details');
+            const btn = document.getElementById('verify-btn');
+            
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'Verifying...';
+            
+            try {
+                const response = await fetch(`${CONFIG.GPMSC_API_URL}/verify/natural`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        statement: pendingDisambiguation.statement,
+                        disambiguation_token: pendingDisambiguation.token,
+                        selected_candidate_index: selectedIndex
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                    throw new Error(errorData.detail || errorData.message || `HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Clear pending state
+                pendingDisambiguation = null;
+                
+                // Re-run the normal display logic (reuse existing code path)
+                // We need to manually trigger the result display since we're bypassing verifyLogic
+                const statusEl = document.getElementById('logic-status');
+                const timeEl = document.getElementById('logic-time');
+                const bodyEl = document.getElementById('logic-body');
+                
+                const elapsed = data.processing_time_ms || 0;
+                timeEl.textContent = `${elapsed}ms`;
+                
+                // Determine logical validity
+                const isUnsatNatural = data.smt_status === "unsat" || 
+                                      (data.smt_satisfiable === false && data.smt_status !== "sat" && data.smt_status !== "unknown");
+                const isContradictionNatural = data.is_contradiction || isUnsatNatural;
+                const isLogicallyValid = data.is_logically_valid && !data.is_paradox && !isContradictionNatural;
+                
+                // Update status
+                if (data.is_paradox || isContradictionNatural) {
+                    if (data.is_paradox) {
+                        statusEl.textContent = '⚠️ PARADOX / CIRCULAR RULE';
+                        statusEl.className = 'result-status warning';
+                    } else {
+                        statusEl.textContent = '✗ CONTRADICTION DETECTED';
+                        statusEl.className = 'result-status error';
+                    }
+                } else if (data.is_logically_valid) {
+                    statusEl.textContent = '✓ LOGICALLY CONSISTENT';
+                    statusEl.className = 'result-status success';
+                } else {
+                    statusEl.textContent = '✗ POTENTIAL ISSUE';
+                    statusEl.className = 'result-status error';
+                }
+                
+                // Build details (reuse existing format)
+                const confidence = data.confidence || 0;
+                const timestamp = data.timestamp || new Date().toISOString();
+                const timestampDisplay = new Date(timestamp).toLocaleString();
+                const hash = data.hash || 'N/A';
+                const hashDisplay = hash !== 'N/A' ? hash.substring(0, 16) + '...' : 'N/A';
+                
+                let riskLevel, riskClass;
+                if (data.is_paradox) {
+                    riskLevel = 'HIGH — Circular dependency detected';
+                    riskClass = 'warning';
+                } else if (!data.is_logically_valid) {
+                    riskLevel = 'MEDIUM — Review recommended';
+                    riskClass = 'invalid';
+                } else if (confidence < 0.7) {
+                    riskLevel = 'MEDIUM — Low translation confidence, verify formally';
+                    riskClass = 'warning';
+                } else {
+                    riskLevel = 'LOW — Appears consistent';
+                    riskClass = '';
+                }
+                
+                detailsEl.innerHTML = `
+                    <div class="verification-row">
+                        <span class="verification-label">Logical Consistency:</span>
+                        <span class="verification-value ${data.is_logically_valid ? '' : 'invalid'}">${data.is_logically_valid ? 'PASS' : 'FAIL'}</span>
+                    </div>
+                    <div class="verification-row">
+                        <span class="verification-label">Paradox Detected:</span>
+                        <span class="verification-value ${data.is_paradox ? 'error' : ''}" style="${data.is_paradox ? 'color: #ff6b6b; font-weight: 600;' : ''}">${data.is_paradox ? 'YES' + (data.paradox_type ? ' — ' + data.paradox_type : ' — Contradiction') : 'None'}</span>
+                    </div>
+                    <div class="verification-row">
+                        <span class="verification-label">Translation Confidence:</span>
+                        <span class="verification-value ${confidence < 0.7 ? 'warning' : ''}">${(confidence * 100).toFixed(0)}%</span>
+                    </div>
+                    <div class="verification-row">
+                        <span class="verification-label">Selected Interpretation:</span>
+                        <span class="verification-value">Candidate ${(data.selected_candidate_index || 0) + 1}</span>
+                    </div>
+                    ${data.formal_translation ? `
+                    <div class="verification-row">
+                        <span class="verification-label">Formal Translation:</span>
+                        <span class="verification-value" style="font-family: monospace; font-size: 12px;">${escapeHtml(data.formal_translation)}</span>
+                    </div>
+                    ` : ''}
+                    <div class="verification-row">
+                        <span class="verification-label">Deployment Risk:</span>
+                        <span class="verification-value ${riskClass}">${riskLevel}</span>
+                    </div>
+                    <div class="verification-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #2d4a6f;">
+                        <span class="verification-label">Timestamp:</span>
+                        <span class="verification-value" style="font-size: 11px;">${timestampDisplay}</span>
+                    </div>
+                    <div class="verification-row">
+                        <span class="verification-label">Hash:</span>
+                        <span class="verification-value" style="font-size: 10px; font-family: monospace; word-break: break-all;">${hashDisplay}</span>
+                    </div>
+                    ${data.audit_id ? `
+                    <div class="verification-row" style="margin-top: 12px; padding-top: 12px; border-top: 2px solid #00d4aa; background: rgba(0, 212, 170, 0.05); padding: 12px; border-radius: 6px;">
+                        <span class="verification-label" style="color: #00d4aa; font-weight: 600;">🔐 Audit Record ID:</span>
+                        <div style="margin-top: 8px;">
+                            <span class="verification-value audit-id-display" 
+                                  style="font-size: 12px; font-family: monospace; color: #00d4aa; cursor: pointer; padding: 6px 12px; background: rgba(0, 212, 170, 0.1); border-radius: 4px; display: inline-block; border: 1px solid #00d4aa;"
+                                  onclick="copyAuditId('${data.audit_id}')"
+                                  title="Click to copy Audit ID">${data.audit_id}</span>
+                        </div>
+                    </div>
+                    ` : ''}
+                `;
+                
+                if (data.plain_english_explanation) {
+                    bodyEl.textContent = data.plain_english_explanation;
+                }
+                
+                // Store for affidavit
+                currentVerificationData = {
+                    mode: 'business',
+                    input: pendingDisambiguation.statement,
+                    data: data,
+                    isLogicallyValid: isLogicallyValid,
+                    timestamp: data.timestamp || new Date().toISOString()
+                };
+                
+            } catch (error) {
+                detailsEl.innerHTML = `<div class="error" style="color: #ff6b6b; padding: 16px; background: rgba(255, 107, 107, 0.1); border-radius: 8px; border: 1px solid #ff6b6b;">Error: ${escapeHtml(error.message)}</div>`;
+            } finally {
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = '✓ Use Selected Interpretation';
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Verify Rule Consistency';
+                }
+            }
         }
     </script>
 </body>
