@@ -2207,24 +2207,28 @@ ${formattedLogic}
             }
 
             // Validate input
-            const validation = validateLogicInput(input);
-            if (!validation.ok) {
-                // Show validation errors
-                const errorsDiv = document.getElementById('validation-errors');
-                const errorsList = document.getElementById('validation-errors-list');
-                errorsDiv.style.display = 'block';
-                errorsList.innerHTML = validation.errors.map(e => `<li>${e}</li>`).join('');
-                
-                // Disable verify button
-                btn.disabled = true;
-                btn.innerHTML = 'Fix errors above';
-                
-                // Show helpful hint
-                alert('Please fix the validation errors:\n\n' + validation.errors.join('\n') + '\n\nTip: Use operators ∧ ∨ ¬ → (you can type AND/OR/NOT/->)');
-                return;
+            // CRITICAL FIX: Only run strict validation in Formal Mode.
+            // Business Mode accepts natural language (punctuation, quotes, %, etc.)
+            if (currentMode === 'formal') {
+                const validation = validateLogicInput(input);
+                if (!validation.ok) {
+                    // Show validation errors
+                    const errorsDiv = document.getElementById('validation-errors');
+                    const errorsList = document.getElementById('validation-errors-list');
+                    errorsDiv.style.display = 'block';
+                    errorsList.innerHTML = validation.errors.map(e => `<li>${e}</li>`).join('');
+                    
+                    // Disable verify button
+                    btn.disabled = true;
+                    btn.innerHTML = 'Fix errors above';
+                    
+                    // Show helpful hint
+                    alert('Please fix the validation errors:\n\n' + validation.errors.join('\n') + '\n\nTip: Use operators ∧ ∨ ¬ → (you can type AND/OR/NOT/->)');
+                    return;
+                }
             }
 
-            // Hide validation errors if validation passed
+            // Hide validation errors if validation passed or was skipped (Business Mode)
             document.getElementById('validation-errors').style.display = 'none';
             
             // Show normalized preview if normalization changed the input
@@ -3156,13 +3160,19 @@ ${formattedLogic}
                 normalizedPreview.style.display = 'none';
             }
             
-            // Validate
-            const validation = validateLogicInput(normalized);
-            if (!validation.ok) {
-                errorsDiv.style.display = 'block';
-                errorsList.innerHTML = validation.errors.map(e => `<li>${e}</li>`).join('');
-                btn.disabled = true;
+            // Validate (only in Formal Mode - Business Mode accepts natural language)
+            if (currentMode === 'formal') {
+                const validation = validateLogicInput(normalized);
+                if (!validation.ok) {
+                    errorsDiv.style.display = 'block';
+                    errorsList.innerHTML = validation.errors.map(e => `<li>${e}</li>`).join('');
+                    btn.disabled = true;
+                } else {
+                    errorsDiv.style.display = 'none';
+                    btn.disabled = false;
+                }
             } else {
+                // Business Mode: Skip strict validation, allow natural language
                 errorsDiv.style.display = 'none';
                 btn.disabled = false;
             }
